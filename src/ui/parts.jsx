@@ -27,17 +27,17 @@ export function PageIntro({ title, children, action }) {
 
 export function SourceLinks({ ids }) {
   return (
-    <Text as="p" type="supporting">
-      {ids.map((id, i) => {
+    <VStack gap={2}>
+      {ids.map((id) => {
         const s = SOURCES[id];
         return (
-          <Text key={id} type="inherit" color="inherit">
-            {i > 0 && ' · '}
-            {s.url ? <Link href={s.url} isExternalLink type="supporting">{s.title}</Link> : s.title} ({s.org})
-          </Text>
+          <VStack key={id} gap={0}>
+            {s.url ? <Link href={s.url} target="_blank" type="supporting" hasUnderline>{s.title}</Link> : <Text type="supporting">{s.title}</Text>}
+            <Text type="supporting" color="secondary">{s.org}</Text>
+          </VStack>
         );
       })}
-    </Text>
+    </VStack>
   );
 }
 

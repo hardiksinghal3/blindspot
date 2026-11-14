@@ -8,13 +8,16 @@ The astronaut predicts each result, the device measures it, and the gap between 
 
 ## Run it
 
-It is a static site with no build step and no dependencies.
+A React site built with Vite. The interface uses [Astryx](https://github.com/meta/astryx), Meta's open-source design system (MIT licence). Needs Node 20 or later.
 
 ```
-python3 -m http.server 8765
+npm install
+npm run dev      # http://127.0.0.1:8765
+npm run build    # static site in dist/, works from any folder
+npm test         # 31 unit tests for the scoring, mission, rules and replay logic
 ```
 
-Open http://localhost:8765. The camera pulse test needs HTTPS or localhost.
+The camera pulse test needs HTTPS or localhost.
 
 - `#/replay` plays a simulated 180-day mission (stamped SIMULATED on every screen).
 - `#/replay/66` opens the replay paused on a given day.
@@ -23,19 +26,20 @@ Open http://localhost:8765. The camera pulse test needs HTTPS or localhost.
 
 | Path | What |
 |---|---|
-| `js/scoring.js` | Baselines, measured score, Insight Gap, reaction, pointing and pulse metrics |
-| `js/rules.js` | Flight rules and body systems, each with its sources |
-| `js/mission.js` | Environments, light-time, blackout windows, radiation ledger |
-| `js/model.js` | Turns stored readings into what the screens show |
-| `js/tests/` | Reaction test, vision test, pointing test, pulse |
-| `js/views/` | One file per screen |
-| `js/replay.js` | The simulated mission |
-| `data/lighttime.json` | Daily Earth to Mars and Earth to Moon range and Sun angle, 2023 to 2040, from JPL Horizons |
-| `data/sep.json` | Solar energetic particle records since 2010 from NASA DONKI |
-| `js/spaceweather.js` | Finds the solar event to act on at a given time |
-| `scripts/fetch_horizons.py` | Rebuilds `data/lighttime.json` (no API key needed) |
-| `scripts/fetch_donki.py` | Rebuilds `data/sep.json` (needs a free api.nasa.gov key in `NASA_API_KEY`) |
-| `tests/` | Unit tests; open `tests/index.html` in a browser |
+| `src/lib/scoring.js` | Baselines, measured score, Insight Gap, reaction, pointing and pulse metrics |
+| `src/lib/rules.js` | Flight rules and body systems, each with its sources |
+| `src/lib/mission.js` | Environments, light-time, blackout windows, radiation ledger |
+| `src/lib/model.js` | Turns stored readings into what the screens show |
+| `src/lib/replay.js` | The simulated mission |
+| `src/lib/spaceweather.js` | Finds the solar event to act on at a given time |
+| `src/lib/logic.test.js` | Unit tests |
+| `src/tests/` | Reaction test, vision test, pointing test, pulse |
+| `src/views/` | One file per screen |
+| `src/ui/` | Insight Gap bar, charts, body figure, status label |
+| `public/data/lighttime.json` | Daily Earth to Mars and Earth to Moon range and Sun angle, 2023 to 2040, from JPL Horizons |
+| `public/data/sep.json` | Solar energetic particle records since 2010 from NASA DONKI |
+| `scripts/fetch_horizons.py` | Rebuilds `lighttime.json` (no API key needed) |
+| `scripts/fetch_donki.py` | Rebuilds `sep.json` (needs a free api.nasa.gov key in `NASA_API_KEY`) |
 
 ## NASA data and references
 
