@@ -1,0 +1,5 @@
+/* Figtree served from the app itself, so the interface needs no font service and works with no link to Earth. */
+@import "@fontsource/figtree/latin-400.css";
+@import "@fontsource/figtree/latin-500.css";
+@import "@fontsource/figtree/latin-600.css";
+@import "@fontsource/figtree/latin-700.css";
