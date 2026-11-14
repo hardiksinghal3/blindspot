@@ -23,12 +23,13 @@ import Body from './views/Body.jsx';
 import Rules from './views/Rules.jsx';
 import Trends from './views/Trends.jsx';
 import Packet from './views/Packet.jsx';
+import Check from './views/Check.jsx';
 
 const NAV = [
   ['today', 'Today', CalendarDaysIcon], ['check', 'Check', BeakerIcon], ['body', 'Body poll', UserIcon], ['trends', 'Trends', ChartBarIcon],
   ['mission', 'Mission', GlobeAltIcon], ['rules', 'Flight rules', ClipboardDocumentListIcon], ['packet', 'Surgeon packet', PaperAirplaneIcon], ['sources', 'Sources and limits', BookOpenIcon],
 ];
-const VIEWS = { today: Today, body: Body, rules: Rules, trends: Trends, packet: Packet };
+const VIEWS = { today: Today, check: Check, body: Body, rules: Rules, trends: Trends, packet: Packet };
 
 function ReplayBar() {
   const { replay, d, toggleReplay, setReplayDay, stopReplay } = useApp();
