@@ -13,6 +13,7 @@ import { SYSTEMS } from '../lib/rules.js';
 import { TEST_NAME } from '../lib/model.js';
 import { isoDate } from '../lib/mission.js';
 import { gapLabel } from '../lib/scoring.js';
+import { CountUp } from '../ui/motion.jsx';
 import { useApp } from '../app/AppContext.jsx';
 import { Status } from '../ui/Status.jsx';
 import { GapBar, signed } from '../ui/graphics.jsx';
@@ -85,7 +86,7 @@ export default function Today() {
             {last ? (
               <>
                 <HStack gap={5} vAlign="end">
-                  <Heading level={2} type="display-3" color={last.unaware ? 'accent' : 'primary'}>{signed(last.gap)}</Heading>
+                  <Heading level={2} type="display-3" color={last.unaware ? 'accent' : 'primary'}><CountUp value={last.gap} format={(n) => signed(Math.round(n))} /></Heading>
                   <VStack gap={0}>
                     <Text type="supporting">Felt {last.felt} · measured {last.score}</Text>
                     <Text type="supporting">{gapLabel(last.gap)}</Text>

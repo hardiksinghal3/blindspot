@@ -180,7 +180,7 @@ export function SignalPath({ label }) {
           <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="4.2s" repeatCount="indefinite" />
         </circle>
       )}
-      <circle cx={a - 14} cy={y} r={11} fill={C.felt} />
+      <circle cx={a - 14} cy={y} r={11} fill="var(--color-info)" />
       <circle cx={b + 16} cy={y} r={8} fill={C.nogo} />
       <text x={a - 25} y={H - 4} fontSize={12} style={FONT}>Earth</text>
       <text x={b + 24} y={H - 4} textAnchor="end" fontSize={12} style={FONT}>Mars</text>

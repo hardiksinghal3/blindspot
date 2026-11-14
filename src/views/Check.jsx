@@ -1,3 +1,4 @@
+import { CountUp } from '../ui/motion.jsx';
 import { useState } from 'react';
 import { VStack, HStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
@@ -144,7 +145,7 @@ function Reveal({ type, t, felt, quick, lines }) {
           <VStack gap={4}>
             <HStack hAlign="between" vAlign="center"><Text type="label">Insight Gap</Text><Status status={p.status} /></HStack>
             <HStack gap={6} vAlign="end" wrap="wrap">
-              <Heading level={2} type="display-1" accessibilityLevel={3}>{signed(p.gap)}</Heading>
+              <Heading level={2} type="display-1" accessibilityLevel={3}><CountUp value={p.gap} format={(n) => signed(Math.round(n))} /></Heading>
               <VStack gap={0} paddingBlockEnd={2}>
                 <Text type="large" weight="semibold">{p.unaware ? 'Impaired and unaware' : gapLabel(p.gap)}</Text>
                 <Text color="secondary">You called {felt}. You measured {p.score}.</Text>

@@ -36,6 +36,8 @@ The camera pulse test needs HTTPS or localhost.
 | `src/tests/` | Reaction test, vision test, pointing test, pulse |
 | `src/views/` | One file per screen |
 | `src/ui/` | Insight Gap bar, charts, body figure, status label |
+| `src/ui/motion.jsx` | Scroll-in reveal and animated numbers; all of it stops when the system asks for reduced motion |
+| `src/themes/blindspot/` | The colour theme, built on Astryx Neutral. After editing run `npx astryx theme build src/themes/blindspot/blindspotTheme.ts` |
 | `public/data/lighttime.json` | Daily Earth to Mars and Earth to Moon range and Sun angle, 2023 to 2040, from JPL Horizons |
 | `public/data/sep.json` | Solar energetic particle records since 2010 from NASA DONKI |
 | `scripts/fetch_horizons.py` | Rebuilds `lighttime.json` (no API key needed) |
