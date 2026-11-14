@@ -7,10 +7,13 @@ import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Table } from '@astryxdesign/core/Table';
+import { MediaTheme } from '@astryxdesign/core/theme';
 import { getState } from '../lib/store.js';
+import { lightTime, formatDelay, isoDate } from '../lib/mission.js';
 import { useApp } from '../app/AppContext.jsx';
 import { Status } from '../ui/Status.jsx';
-import { GapBar } from '../ui/graphics.jsx';
+import { GapBar, SignalPath } from '../ui/graphics.jsx';
+import { Reveal, CountUp } from '../ui/motion.jsx';
 import { Legend, PAGE_WIDTH, READ_WIDTH } from '../ui/parts.jsx';
 
 const EVIDENCE = [
@@ -32,9 +35,9 @@ function Example() {
           <Status status="nogo" />
         </HStack>
         <HStack gap={8} wrap="wrap">
-          <VStack gap={0}><Text type="supporting">You called</Text><Heading level={2} accessibilityLevel={3}>82</Heading></VStack>
-          <VStack gap={0}><Text type="supporting">You measured</Text><Heading level={2} accessibilityLevel={3}>9</Heading></VStack>
-          <VStack gap={0}><Text type="supporting">Insight Gap</Text><Heading level={2} accessibilityLevel={3}>+73</Heading></VStack>
+          <VStack gap={0}><Text type="supporting">You called</Text><Heading level={2} accessibilityLevel={3}><CountUp value={82} /></Heading></VStack>
+          <VStack gap={0}><Text type="supporting">You measured</Text><Heading level={2} accessibilityLevel={3}><CountUp value={9} from={82} /></Heading></VStack>
+          <VStack gap={0}><Text type="supporting">Insight Gap</Text><Heading level={2} accessibilityLevel={3}>+<CountUp value={73} /></Heading></VStack>
         </HStack>
         <GapBar felt={82} measured={9} status="nogo" />
         <Legend />
@@ -46,6 +49,21 @@ function Example() {
   );
 }
 
+// Today's real one-way signal time between Earth and Mars, from the bundled JPL Horizons table.
+function Signal() {
+  const { data, now } = useApp();
+  const lt = data && lightTime(data, 'mars_surface', isoDate(now));
+  const text = !lt ? 'One-way signal time between Earth and Mars: 3 to 22 minutes.'
+    : lt.blackout ? 'Today Mars is behind the Sun. No signal gets through.'
+      : `A signal sent now reaches Mars in ${formatDelay(lt.seconds)}. The answer takes as long again.`;
+  return (
+    <VStack gap={1} width="100%" maxWidth={READ_WIDTH}>
+      <SignalPath label={text} />
+      <Text as="p" type="supporting" justify="center">{text} {lt ? 'Source: JPL Horizons.' : ''}</Text>
+    </VStack>
+  );
+}
+
 export default function Landing() {
   const { startReplay } = useApp();
   return (
@@ -54,27 +72,34 @@ export default function Landing() {
       content={
         <LayoutContent padding={6}>
           <VStack gap={10}>
-            <VStack gap={6} hAlign="center" paddingBlockStart={6}>
-              <VStack gap={3} hAlign="center" maxWidth={READ_WIDTH}>
-                <Heading level={1} type="display-2" justify="center" textWrap="balance">The health monitor that does not trust how you feel</Heading>
-                <Text as="p" type="large" color="secondary" justify="center" textWrap="balance">
-                  On the way to Mars, astronauts have to spot changes in themselves. But a tired brain rates itself as fine. BlindSpot asks how you feel, measures how you are, and acts on the gap.
-                </Text>
-              </VStack>
-              <HStack gap={3} wrap="wrap" hAlign="center">
-                <Button label="Run today's check" variant="primary" size="lg" href={getState().settings.onboarded ? '#/check' : '#/setup'} />
-                <Button label="Play a 180-day mission" size="lg" onClick={() => startReplay(1, true)} />
-              </HStack>
+            <VStack gap={6} hAlign="center">
+              <MediaTheme mode="dark">
+                <Card variant="night" padding={8} width="100%">
+                  <Reveal gap={6} hAlign="center" rise={12}>
+                    <VStack gap={3} hAlign="center" maxWidth={READ_WIDTH}>
+                      <Heading level={1} type="display-2" justify="center" textWrap="balance">The health monitor that does not trust how you feel</Heading>
+                      <Text as="p" type="large" color="secondary" justify="center" textWrap="balance">
+                        On the way to Mars, astronauts have to spot changes in themselves. But a tired brain rates itself as fine. BlindSpot asks how you feel, measures how you are, and acts on the gap.
+                      </Text>
+                    </VStack>
+                    <HStack gap={3} wrap="wrap" hAlign="center">
+                      <Button label="Run today's check" variant="primary" size="lg" href={getState().settings.onboarded ? '#/check' : '#/setup'} />
+                      <Button label="Play a 180-day mission" size="lg" onClick={() => startReplay(1, true)} />
+                    </HStack>
+                    <Signal />
+                  </Reveal>
+                </Card>
+              </MediaTheme>
               <Text as="p" type="supporting" justify="center">The check takes about a minute and uses only this device. The replay flies a simulated crew member through real NASA light-time and solar storm data.</Text>
-              <Example />
+              <Reveal hAlign="center" width="100%" delay={150}><Example /></Reveal>
             </VStack>
 
-            <VStack gap={4}>
+            <Reveal gap={4}>
               <Heading level={2}>Why self-report is not enough</Heading>
               <Table data={EVIDENCE} columns={COLUMNS} idKey="id" verticalAlign="top" />
-            </VStack>
+            </Reveal>
 
-            <VStack gap={4}>
+            <Reveal gap={4}>
               <Heading level={2}>How it works</Heading>
               <List listStyle="decimal" hasDividers edge="flush">
                 <ListItem label="Call it" description="Before each test you predict your result on a slider." />
@@ -82,8 +107,9 @@ export default function Landing() {
                 <ListItem label="See the gap" description="Felt minus measured. A large gap while impaired is the most dangerous state, and it gets its own alarm." />
                 <ListItem label="Act without Earth" description="Each body system reports GO, WATCH or NO-GO from written rules, with the source of every number." />
               </List>
-            </VStack>
+            </Reveal>
 
+            <Reveal>
             <Grid columns={{ minWidth: 320, repeat: 'fit' }} gap={6}>
               <VStack gap={2}>
                 <Heading level={3}>NASA data inside</Heading>
@@ -96,6 +122,7 @@ export default function Landing() {
                 <Link href="#/rules">Read the flight rules</Link>
               </VStack>
             </Grid>
+            </Reveal>
 
             <Divider />
             <Text as="p" type="supporting">Research prototype for the 2026 NASA Space Apps Challenge. Not a medical device. Not endorsed by NASA. The code and text were produced with SI (AI) coding tools; no SI-generated images, video or audio are used.</Text>

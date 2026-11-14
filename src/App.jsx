@@ -17,6 +17,8 @@ import { REPLAY_DAYS, REPLAY_EVENTS } from './lib/replay.js';
 import { Status } from './ui/Status.jsx';
 import { Logo } from './ui/graphics.jsx';
 import { PAGE_WIDTH } from './ui/parts.jsx';
+import { Reveal } from './ui/motion.jsx';
+import { MediaTheme } from '@astryxdesign/core/theme';
 import Landing from './views/Landing.jsx';
 import Today from './views/Today.jsx';
 import Body from './views/Body.jsx';
@@ -112,6 +114,7 @@ function Shell() {
       height="fill"
       banner={replay ? <ReplayBar /> : undefined}
       sideNav={
+        <MediaTheme mode="dark">
         <SideNav
           header={<SideNavHeading heading="BlindSpot" headingHref="#/" icon={brand} subheading="Research prototype" />}
           footer={d.result.overall !== 'nodata' ? <HStack gap={2} vAlign="center" padding={3}><Text type="supporting">Overall</Text><Status status={d.result.overall} size="sm" /></HStack> : undefined}>
@@ -122,13 +125,14 @@ function Shell() {
             {NAV.slice(4).map(([p, label, icon]) => <SideNavItem key={p} label={label} href={`#/${p}`} icon={icon} isSelected={route.name === p} />)}
           </SideNavSection>
         </SideNav>
+        </MediaTheme>
       }>
       <Layout
         height="fill" contentWidth={PAGE_WIDTH}
         header={<VStack gap={0}><MissionStrip />{d.focus && <FocusBar />}</VStack>}
         content={
           <LayoutContent padding={6}>
-            <VStack gap={6}>{View ? <View args={route.args} /> : <Missing name={route.name} />}</VStack>
+            <Reveal key={route.name} gap={6} rise={10}>{View ? <View args={route.args} /> : <Missing name={route.name} />}</Reveal>
           </LayoutContent>
         }
       />
