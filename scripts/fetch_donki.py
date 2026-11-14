@@ -39,5 +39,5 @@ json.dump({
     "retrieved": END.isoformat(), "from": START.isoformat(),
     "note": "Each record is the onset of a solar energetic particle event as seen by one instrument, or a model forecast (instrument name starts with MODEL).",
     "events": events,
-}, open("data/sep.json", "w"), separators=(",", ":"))
+}, open("public/data/sep.json", "w"), separators=(",", ":"))
 print(len(events), "records in", calls, "requests")

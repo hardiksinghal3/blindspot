@@ -2,3 +2,8 @@ docs/NOTES-internal.md
 __pycache__/
 .DS_Store
 scripts/cdp.py
+node_modules/
+dist/
+docs/astryx-components.txt
+.astryx-ref/
+.legacy/

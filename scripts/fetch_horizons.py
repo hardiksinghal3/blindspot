@@ -45,4 +45,4 @@ for name, cmd in BODIES.items():
         "sun_angle_deg": [round(x, 2) for x in elong],
     }
     print(name, first, len(dist), "days; range AU min/max", min(dist), max(dist))
-json.dump(result, open("data/lighttime.json", "w"), separators=(",", ":"))
+json.dump(result, open("public/data/lighttime.json", "w"), separators=(",", ":"))
