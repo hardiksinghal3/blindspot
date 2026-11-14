@@ -1,3 +1,4 @@
 docs/NOTES-internal.md
 __pycache__/
 .DS_Store
+scripts/cdp.py
