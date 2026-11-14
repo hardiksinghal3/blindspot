@@ -120,8 +120,9 @@ export const RULES = [
   },
   {
     id: 'spe', system: 'dose', title: 'Solar particle event', origin: 'prototype',
-    trigger: 'A solar energetic particle event is in progress.', sources: ['donki', 'artemis'],
-    check: (c) => (c.spe ? F('nogo', `Solar particle event in progress${c.spe.label ? ` (${c.spe.label})` : ''}.`, 'Go to the storm shelter. No work outside. Enter your dosimeter reading when it ends.') : null),
+    trigger: 'A measured solar particle onset in NASA\'s DONKI record in the last 24 hours. NO-GO for protons above 100 MeV, WATCH for other onsets. The records come from instruments near Earth and on STEREO A, so the ship\'s own detector has the last word.', sources: ['donki'],
+    check: (c) => (c.spe ? F(c.spe.level, `Solar particle event recorded by ${c.spe.inst} at ${c.spe.t.replace('T', ' ').replace('Z', ' UTC')} (NASA DONKI).`,
+      c.spe.level === 'nogo' ? 'Go to the best-shielded area. No work outside. Enter your dosimeter reading when it has passed.' : 'Stay close to the shielded area and watch the ship\'s particle detector. Postpone work outside.') : null),
   },
   {
     id: 'co2', system: 'cabin', title: 'Cabin carbon dioxide', origin: 'nasa',

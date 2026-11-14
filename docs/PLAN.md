@@ -13,7 +13,7 @@ A judge opens one public link, understands the idea in 10 seconds, runs a real c
 | Stack | Static site, plain HTML, CSS and JavaScript modules, no build step, no runtime dependencies | Loads fast, anyone on the team can edit it, nothing to break on judging day |
 | Hosting | GitHub Pages (HTTPS) | The camera only works on HTTPS; judges need a link with no login |
 | Storage | The browser only (localStorage), with export | Privacy; matches a spacecraft with no link to Earth |
-| NASA data | Fetched once by scripts and bundled as JSON | JPL Horizons sends no CORS header, so a browser cannot call it; the DONKI demo key is rate limited (10 calls, currently used up); a spacecraft cannot call Earth anyway |
+| NASA data | Fetched once by scripts and bundled as JSON | JPL Horizons sends no CORS header, so a browser cannot call it; DONKI needs a key and allows 60 days per request; a spacecraft cannot call Earth anyway |
 | Simulated data | Only in "Mission replay", stamped SIMULATED on every screen | Honesty, and judges punish hidden fake data |
 | Medical safety | No drug doses, a "prototype, not a medical device" notice, every rule shows its source and evidence tier | Validity score |
 | SI and branding | SI use disclosed in README, footer and page metadata; no NASA logos or insignia | Submission rules |
@@ -74,8 +74,8 @@ Only the 600 mSv, 3 mmHg and 2.5 mmHg triggers are NASA's numbers. Every other t
 
 ## 7. NASA data pipeline
 
-- **JPL Horizons:** daily Earth to Mars and Earth to Moon distance and Sun angle, 2026 to 2040. Gives one-way light-time, earliest reply time and solar-conjunction blackout (Mars within 2 degrees of the Sun, which reproduces NASA's 2 to 16 Oct 2021 commanding pause). For a ship in transit the distance is an estimate, labelled as such, because Horizons has no trajectory for a mission that does not exist.
-- **NASA DONKI:** catalogue of real solar particle events and flares. Drives shelter alerts in live mode and in the replay.
+- **JPL Horizons:** daily Earth to Mars and Earth to Moon distance and Sun angle, 2023 to 2040. Gives one-way light-time, earliest reply time and solar-conjunction blackout (Mars within 2 degrees of the Sun, which reproduces NASA's 2 to 16 Oct 2021 commanding pause). For a ship in transit the distance is an estimate, labelled as such, because Horizons has no trajectory for a mission that does not exist.
+- **NASA DONKI:** 494 real solar particle records since 2010. Drives the solar event rule in live mode. The replay flies real calendar dates (departure 20 Nov 2023), so its solar storms and light-time are the real record.
 - **Dose rates:** the measured table in NASA's Artemis I radiation paper (mSv per day: ISS 0.68, lunar surface 0.81, low lunar orbit 1.55, Mars transit 1.58, Mars surface 0.65, Artemis I 0.96 to 1.24).
 - **Caveat shown in the app:** these are dose-equivalent rates for December 2022 solar conditions; the 600 mSv limit is in effective dose, so the ledger is a rough comparison.
 - **Not invented:** a solar event's dose depends on shielding, so the app asks for the dosimeter reading and does not make one up.
@@ -136,5 +136,4 @@ Everything above the line ships first; items below it are added only if the ones
 
 - Create or approve the public GitHub repository for hosting.
 - Try the webcam pulse on a real face against a manual count.
-- Possibly a free api.nasa.gov key: the shared demo key is over its limit, and it does not reset for about 6.5 hours. Without a key I download the solar event catalogue after the reset.
 - Reshape the idea with your team, record the 30-second demo, fill in the project page and disclose SI use.

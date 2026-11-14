@@ -3,7 +3,8 @@ import { h, chip, logo } from './ui.js';
 import { getState, subscribe, update } from './store.js';
 import { derive } from './model.js';
 import { formatDelay, ENVIRONMENTS } from './mission.js';
-import { buildReplay, replayNow, replaySpe, REPLAY_DAYS, REPLAY_EVENTS } from './replay.js';
+import { buildReplay, replayNow, REPLAY_DAYS, REPLAY_EVENTS } from './replay.js';
+import { activeSpe } from './spaceweather.js';
 
 const NAV = [['today', 'Today'], ['check', 'Check'], ['body', 'Body'], ['trends', 'Trends'], ['mission', 'Mission'], ['rules', 'Flight rules'], ['packet', 'Surgeon packet'], ['sources', 'Sources']];
 const VIEWS = {
@@ -12,17 +13,18 @@ const VIEWS = {
   sources: () => import('./views/sources.js'), setup: () => import('./views/setup.js'),
 };
 
-export const app = { data: null, replay: null, timer: null, cleanup: null };
+export const app = { data: null, sep: null, replay: null, timer: null, cleanup: null };
 
 // Everything a screen needs. In replay, state is simulated and "now" is the replay day.
 export function context() {
   if (app.replay) {
     const state = buildReplay(app.replay.day);
     state.settings.focus = getState().settings.focus;
-    return { state, now: replayNow(app.replay.day), d: derive(state, replayNow(app.replay.day), app.data, { spe: replaySpe(app.replay.day) }), replay: app.replay, data: app.data };
+    const at = replayNow(app.replay.day);
+    return { state, now: at, d: derive(state, at, app.data, { spe: activeSpe(app.sep, at) }), replay: app.replay, data: app.data, sep: app.sep };
   }
   const state = getState(), now = new Date().toISOString();
-  return { state, now, d: derive(state, now, app.data), replay: null, data: app.data };
+  return { state, now, d: derive(state, now, app.data, { spe: activeSpe(app.sep, now) }), replay: null, data: app.data, sep: app.sep };
 }
 
 export function startReplay(day = 1, autoplay = true) {
@@ -63,7 +65,7 @@ function renderChrome(ctx, r) {
       h('button', { class: 'btn sm', onClick: () => (ctx.replay.playing ? pause() : play()) }, ctx.replay.playing ? 'Pause' : 'Play'),
       h('input', { type: 'range', min: 1, max: REPLAY_DAYS, value: ctx.replay.day, 'aria-label': 'Mission day', onInput: (e) => { clearInterval(app.timer); app.replay.playing = false; app.replay.day = +e.target.value; render(true); } }),
       h('span', { class: 'num small' }, `Day ${ctx.replay.day} of ${REPLAY_DAYS}`),
-      h('span', { class: 'small', style: 'flex-basis:100%;order:9' }, ev ? `Day ${ev.day}: ${ev.label}` : ''),
+      h('span', { class: 'small', style: 'flex-basis:100%;order:9' }, ev ? `Day ${ev.day}: ${ev.label}` : '', d.ctx.spe ? ' · Solar particle event in NASA\'s record for this date (real data).' : ''),
       h('button', { class: 'btn sm ghost', onClick: stopReplay }, 'Exit replay'))));
   }
   if (!landing) {
@@ -103,6 +105,7 @@ export async function render(soft = false) {
 
 async function boot() {
   try { app.data = await (await fetch('data/lighttime.json')).json(); } catch { app.data = null; }
+  try { app.sep = await (await fetch('data/sep.json')).json(); } catch { app.sep = null; }
   window.addEventListener('hashchange', () => render());
   subscribe(() => render(true));
   render();

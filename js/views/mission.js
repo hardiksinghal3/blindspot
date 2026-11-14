@@ -1,10 +1,14 @@
 import { h, fmtDate } from '../ui.js';
 import { ENVIRONMENTS, PROFILES, formatDelay, lightTime, isoDate, DAY_MS, BLACKOUT_DEG } from '../mission.js';
 import { HAZARDS } from '../rules.js';
+import { recentEvents } from '../spaceweather.js';
+import { chip } from '../ui.js';
 
 export const title = 'Mission';
 export default function mission(ctx) {
-  const { d, data, state, now } = ctx;
+  const { d, data, state, now, sep } = ctx;
+  const recent = recentEvents(sep, now, 30);
+  const spe = d.ctx.spe;
   const lt = d.lt, dose = d.dose;
   const bar = (share, cls) => h('div', { class: 'progress', style: 'height:10px' }, h('i', { style: `width:${Math.min(100, share * 100)}%;background:var(--${cls})` }));
   // Light-time over the next 26 months for Mars, from Horizons.
@@ -39,6 +43,13 @@ export default function mission(ctx) {
           h('dt', null, 'Projected at mission end'), h('dd', { class: dose.projected >= dose.limit ? 'c-watch' : '' }, `${Math.round(dose.projected)} mSv`)),
         bar(dose.shareProjected, dose.shareProjected >= 1 ? 'watch' : 'accent'),
         h('p', { class: 'note' }, 'Rough comparison. Rates are dose equivalent measured around the Solar System for December 2022 solar conditions; the 600 mSv limit is in effective dose. Solar storm dose depends on shielding, so enter the dosimeter reading instead of trusting the estimate.'))),
+    h('div', { class: `panel stack ${spe ? 'edge-' + spe.level : ''}` },
+      h('div', { class: 'row between' }, h('span', { class: 'eyebrow' }, 'Space weather: solar particle events'), h('div', { class: 'row', style: 'gap:6px' }, h('span', { class: 'tag nasa' }, 'NASA DONKI'), chip(spe ? spe.level : 'go'))),
+      h('p', null, spe ? `Event in the last 24 hours: ${spe.inst}, onset ${spe.t.replace('T', ' ').replace('Z', ' UTC')}.` : 'No measured onset in the last 24 hours.',
+        h('span', { class: 'dim' }, ` ${recent.length} onset record${recent.length === 1 ? '' : 's'} in the last 30 days.`)),
+      recent.length ? h('table', { class: 't' }, h('thead', null, h('tr', null, h('th', null, 'Onset (UTC)'), h('th', null, 'Instrument and energy'), h('th', null, 'Record'))),
+        h('tbody', null, recent.slice(0, 8).map((e) => h('tr', null, h('td', { class: 'num' }, e.t.replace('T', ' ').replace('Z', '')), h('td', null, e.inst.join(', ')), h('td', null, e.link ? h('a', { href: e.link, target: '_blank', rel: 'noopener' }, 'DONKI') : ''))))) : null,
+      h('p', { class: 'tiny dim' }, sep ? `${sep.events.length} records from ${sep.from} to ${sep.retrieved}, bundled in the app${ctx.replay ? '; the replay uses the real record for its dates' : ''}. They come from instruments near Earth and on STEREO A, so a ship in deep space would rely on its own detector. Model forecasts are left out.` : 'Solar event file not loaded.')),
     h('div', { class: 'panel stack' }, h('span', { class: 'eyebrow' }, 'Mission plan'),
       h('table', { class: 't' }, h('thead', null, h('tr', null, ['Phase', 'Days', 'Gravity', 'Dose rate', 'Tests that apply'].map((x) => h('th', null, x)))),
         h('tbody', null, d.profile.phases.map((p, i) => { const e = ENVIRONMENTS[p.env]; return h('tr', { style: i === d.phase.index ? 'background:rgba(169,188,255,.06)' : '' },

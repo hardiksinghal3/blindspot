@@ -1,21 +1,21 @@
 // Mission replay: a SIMULATED crew member on a 180-day Mars transit. Deterministic.
+// The calendar is real history (departure 20 Nov 2023), so light-time and solar particle events
+// come from the bundled NASA data for those dates. Only the crew member and the cabin are simulated.
 // The story follows published effects: sleep restriction slows reactions while self-rating barely moves.
 import { DAY_MS, isoDate } from './mission.js';
 import { emptyState } from './store.js';
 
 export const REPLAY_DAYS = 180;
-export const REPLAY_START = '2028-11-20';
+export const REPLAY_START = '2023-11-20';
 export const REPLAY_EVENTS = [
   { day: 1, label: 'Departure. Baselines begin.' },
   { day: 58, label: 'Heavy workload begins. Sleep drops to about 5 hours.' },
   { day: 63, label: 'First impaired and unaware finding. Self-rating has barely moved.' },
   { day: 73, label: 'Normal sleep resumes.' },
-  { day: 97, label: 'Solar particle event. Shelter.' },
   { day: 121, label: 'Scrubber fault. Carbon dioxide above 3 mmHg.' },
   { day: 150, label: 'Near vision one line worse than baseline.' },
   { day: 180, label: 'Mars landing day.' },
 ];
-export const SPE_DAYS = [97, 98];
 
 function rng(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 
@@ -54,5 +54,4 @@ export function buildReplay(upToDay = REPLAY_DAYS) {
 }
 
 export const replayNow = (day) => new Date(Date.parse(REPLAY_START) + (day - 1) * DAY_MS + 9 * 3600000).toISOString();
-export const replaySpe = (day) => (SPE_DAYS.includes(day) ? { label: 'simulated for this replay' } : null);
 export const replayDate = (day) => isoDate(Date.parse(REPLAY_START) + (day - 1) * DAY_MS);

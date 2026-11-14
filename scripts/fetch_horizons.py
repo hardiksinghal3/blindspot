@@ -4,7 +4,7 @@ and write data/lighttime.json. Run from the repository root. No API key needed."
 import json, subprocess, urllib.parse, datetime, sys
 
 API = "https://ssd.jpl.nasa.gov/api/horizons.api"
-START, STOP = "2026-01-01", "2040-12-31"
+START, STOP = "2023-01-01", "2040-12-31"
 BODIES = {"mars": "499", "moon": "301"}
 AU_KM = 149597870.7
 C_KM_S = 299792.458

@@ -159,9 +159,20 @@ test('model: temperature is judged against the in-flight rise', () => {
   eq(d.result.systems.core.status, 'go');
 });
 
+const sep = await (await fetch('../data/sep.json')).json();
+const { activeSpe, recentEvents } = await import('../js/spaceweather.js');
+test('space weather: real DONKI records drive the solar event rule', () => {
+  eq(activeSpe(sep, '2024-04-20T12:00:00Z'), null);
+  eq(activeSpe(sep, '2024-05-10T20:00:00Z').level, 'watch');
+  const storm = activeSpe(sep, '2024-05-11T12:00:00Z'); eq(storm.level, 'nogo'); ok(storm.inst.includes('>100 MeV'));
+  ok(recentEvents(sep, '2024-05-20T00:00:00Z', 30).length >= 8);
+  ok(sep.events.length > 400);
+  eq(evaluate({ spe: storm }).systems.dose.status, 'nogo');
+});
 const { buildReplay, replayNow } = await import('../js/replay.js');
 test('replay: impaired and unaware appears during short sleep and clears afterwards', () => {
-  const at = (day) => derive(buildReplay(day), replayNow(day), data);
+  const at = (day) => derive(buildReplay(day), replayNow(day), data, { spe: activeSpe(sep, replayNow(day)) });
+  eq(at(174).result.systems.dose.status, 'nogo'); ok(at(174).lt && at(174).lt.seconds > 60);
   eq(at(40).result.systems.brain.status, 'go');
   const bad = at(70); ok(bad.metrics.pvt.last.unaware, 'day 70 unaware'); ok(bad.metrics.pvt.last.score <= 15, 'score ' + bad.metrics.pvt.last.score);
   ok(bad.metrics.pvt.last.felt >= 30, 'felt stays moderate: ' + bad.metrics.pvt.last.felt);
