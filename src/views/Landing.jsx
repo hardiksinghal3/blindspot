@@ -6,7 +6,7 @@ import { Grid } from '@astryxdesign/core/Grid';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
 import { List, ListItem } from '@astryxdesign/core/List';
-import { Table } from '@astryxdesign/core/Table';
+import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { MediaTheme } from '@astryxdesign/core/theme';
 import { getState } from '../lib/store.js';
 import { lightTime, formatDelay, isoDate } from '../lib/mission.js';
@@ -14,21 +14,38 @@ import { useApp } from '../app/AppContext.jsx';
 import { Status } from '../ui/Status.jsx';
 import { GapBar, SignalPath } from '../ui/graphics.jsx';
 import { Reveal, CountUp } from '../ui/motion.jsx';
-import { Legend, PAGE_WIDTH, READ_WIDTH } from '../ui/parts.jsx';
+import { Legend, READ_WIDTH } from '../ui/parts.jsx';
+
+const LANDING_WIDTH = 1280;
 
 const EVIDENCE = [
-  { id: 'sleep', finding: 'Fourteen days of sleep limited to 6 hours or less cut performance as much as up to two nights with no sleep. The subjects were largely unaware of it.', source: 'Van Dongen and others, Sleep, 2003', href: 'https://pubmed.ncbi.nlm.nih.gov/12683469/' },
-  { id: 'delay', finding: 'The longest one-way signal time between Earth and Mars is about 22 minutes. A question and its answer take up to 44.', source: 'NASA / JPL Horizons, bundled in this app', href: '#/mission' },
-  { id: 'sans', finding: 'About 70 % of space station astronauts get some swelling at the back of the eye. Near vision is one thing BlindSpot tests.', source: 'NASA Human Research Program', href: 'https://www.nasa.gov/reference/risk-of-spaceflight-associated-neuro-ocular-syndrome-sans/' },
+  { id: 'sleep', figure: '14 days', finding: 'of sleep limited to 6 hours or less cut performance as much as up to two nights with no sleep. The subjects were largely unaware of it.', source: 'Van Dongen and others, Sleep, 2003', href: 'https://pubmed.ncbi.nlm.nih.gov/12683469/' },
+  { id: 'delay', figure: '22 minutes', finding: 'is about the longest one-way signal time between Earth and Mars. A question and its answer take up to 44.', source: 'NASA / JPL Horizons, bundled in this app', href: '#/mission' },
+  { id: 'sans', figure: 'About 70 %', finding: 'of space station astronauts get some swelling at the back of the eye. Near vision is one thing BlindSpot tests.', source: 'NASA Human Research Program', href: 'https://www.nasa.gov/reference/risk-of-spaceflight-associated-neuro-ocular-syndrome-sans/' },
 ];
-const COLUMNS = [
-  { key: 'finding', header: 'What the research found' },
-  { key: 'source', header: 'Source', renderCell: (row) => <Link href={row.href} isExternalLink={!row.href.startsWith('#')}>{row.source}</Link> },
+const STEPS = [
+  ['Call it', 'Before each test you predict your result on a slider.'],
+  ['Test it', 'Reaction time, near vision, pointing and pulse, measured on this device against your own baseline.'],
+  ['See the gap', 'Felt minus measured. A large gap while impaired is the most dangerous state, and it gets its own alarm.'],
+  ['Act without Earth', 'Each body system reports GO, WATCH or NO-GO from written rules, with the source of every number.'],
 ];
+
+function Evidence({ item }) {
+  const external = !item.href.startsWith('#');
+  return (
+    <ClickableCard label={`${item.figure} ${item.finding}`} href={item.href} target={external ? '_blank' : '_self'} padding={5}>
+      <VStack gap={2}>
+        <Heading level={3} type="display-3" color="accent">{item.figure}</Heading>
+        <Text as="p">{item.finding}</Text>
+        <Text type="supporting">{item.source}</Text>
+      </VStack>
+    </ClickableCard>
+  );
+}
 
 function Example() {
   return (
-    <Card padding={5} maxWidth={READ_WIDTH} width="100%">
+    <Card padding={5} width="100%">
       <VStack gap={4}>
         <HStack hAlign="between" vAlign="center">
           <Text type="label">Alertness check</Text>
@@ -86,43 +103,47 @@ export default function Landing() {
         </Card>
       </MediaTheme>
       <Layout
-      height="auto" contentWidth={PAGE_WIDTH}
+      height="auto" contentWidth={LANDING_WIDTH}
       content={
         <LayoutContent padding={6}>
           <VStack gap={8}>
-            <VStack gap={4} hAlign="center">
-              <Text as="p" type="supporting" justify="center">The check takes about a minute and uses only this device. The replay flies a simulated crew member through real NASA light-time and solar storm data.</Text>
-              <Reveal hAlign="center" width="100%" delay={150}><Example /></Reveal>
-            </VStack>
+            <Reveal>
+              <Grid columns={{ minWidth: 340, repeat: 'fit' }} gap={8} align="center">
+                <VStack gap={3}>
+                  <Heading level={2}>How it works</Heading>
+                  <List listStyle="decimal" hasDividers edge="flush">
+                    {STEPS.map(([label, description]) => <ListItem key={label} label={label} description={<Text type="supporting">{description}</Text>} />)}
+                  </List>
+                  <Text as="p" type="supporting">The check takes about a minute and uses only this device. The replay flies a simulated crew member through real NASA light-time and solar storm data.</Text>
+                </VStack>
+                <Example />
+              </Grid>
+            </Reveal>
 
             <Reveal gap={4}>
               <Heading level={2}>Why self-report is not enough</Heading>
-              <Table data={EVIDENCE} columns={COLUMNS} idKey="id" verticalAlign="top" />
-            </Reveal>
-
-            <Reveal gap={4}>
-              <Heading level={2}>How it works</Heading>
-              <List listStyle="decimal" hasDividers edge="flush">
-                <ListItem label="Call it" description="Before each test you predict your result on a slider." />
-                <ListItem label="Test it" description="Reaction time, near vision, pointing and pulse, measured on this device against your own baseline." />
-                <ListItem label="See the gap" description="Felt minus measured. A large gap while impaired is the most dangerous state, and it gets its own alarm." />
-                <ListItem label="Act without Earth" description="Each body system reports GO, WATCH or NO-GO from written rules, with the source of every number." />
-              </List>
+              <Grid columns={{ minWidth: 280, repeat: 'fit' }} gap={4}>
+                {EVIDENCE.map((item) => <Evidence key={item.id} item={item} />)}
+              </Grid>
             </Reveal>
 
             <Reveal>
-            <Grid columns={{ minWidth: 320, repeat: 'fit' }} gap={6}>
-              <VStack gap={2}>
-                <Heading level={3}>NASA data inside</Heading>
-                <Text as="p" color="secondary">Light-time and communication blackouts come from the JPL Horizons system. Solar particle alerts come from NASA's DONKI record. Radiation dose uses rates measured around the Solar System and NASA's 600 mSv career limit. Cabin air uses NASA's 3 mmHg carbon dioxide limit.</Text>
-                <Link href="#/sources">Sources and limits</Link>
-              </VStack>
-              <VStack gap={2}>
-                <Heading level={3}>What this is not</Heading>
-                <Text as="p" color="secondary">Not a medical device and not validated in flight. The Insight Gap is a hypothesis built on sleep research. Thresholds that are not NASA's are marked as this prototype's own on every rule.</Text>
-                <Link href="#/rules">Read the flight rules</Link>
-              </VStack>
-            </Grid>
+              <Grid columns={{ minWidth: 320, repeat: 'fit' }} gap={4}>
+                <Card padding={5}>
+                  <VStack gap={2}>
+                    <Heading level={3}>NASA data inside</Heading>
+                    <Text as="p" color="secondary">Light-time and communication blackouts come from the JPL Horizons system. Solar particle alerts come from NASA's DONKI record. Radiation dose uses rates measured around the Solar System and NASA's 600 mSv career limit. Cabin air uses NASA's 3 mmHg carbon dioxide limit.</Text>
+                    <Link href="#/sources">Sources and limits</Link>
+                  </VStack>
+                </Card>
+                <Card padding={5}>
+                  <VStack gap={2}>
+                    <Heading level={3}>What this is not</Heading>
+                    <Text as="p" color="secondary">Not a medical device and not validated in flight. The Insight Gap is a hypothesis built on sleep research. Thresholds that are not NASA's are marked as this prototype's own on every rule.</Text>
+                    <Link href="#/rules">Read the flight rules</Link>
+                  </VStack>
+                </Card>
+              </Grid>
             </Reveal>
 
             <Divider />
