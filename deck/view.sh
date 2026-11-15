@@ -4,4 +4,4 @@ python3 -c "
 from PIL import Image
 im=Image.open('view/all.png')
 for i in range(7): im.crop((0,i*720,1280,(i+1)*720)).save(f'view/{i+1}.png')
-import pypdf; print(len(pypdf.PdfReader('BlindSpot-demo.pdf').pages),'pages')"
+import pypdf; print(len(pypdf.PdfReader('BlindSpot.pdf').pages),'pages')"

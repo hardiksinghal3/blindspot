@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the 7-slide demo deck (deck.html and BlindSpot-demo.pdf) from the text below and the app's own data."""
+"""Builds the 7-slide deck (deck.html and BlindSpot.pdf) from the text below and the app's own data."""
 import json, subprocess, pathlib
 HERE = pathlib.Path(__file__).parent
 LIVE = '<a href="https://hardiksinghal3.github.io/blindspot/">hardiksinghal3.github.io/blindspot</a>'
@@ -117,5 +117,5 @@ s7 = slide(7, '''<h1 style="font-size:50px;white-space:nowrap;line-height:1.14;m
 html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>BlindSpot demo</title><link rel="stylesheet" href="deck.css"></head><body>' + s1 + s2 + s3 + s4 + s5 + s6 + s7 + '</body></html>'
 (HERE / 'deck.html').write_text(html)
 subprocess.run(['google-chrome', '--headless=new', '--no-sandbox', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=4000',
-                f'--print-to-pdf={HERE / "BlindSpot-demo.pdf"}', f'file://{HERE / "deck.html"}'], check=True, capture_output=True)
+                f'--print-to-pdf={HERE / "BlindSpot.pdf"}', f'file://{HERE / "deck.html"}'], check=True, capture_output=True)
 print('built')
