@@ -3,7 +3,7 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Grid } from '@astryxdesign/core/Grid';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
-import { Token } from '@astryxdesign/core/Token';
+import { Tag } from '../ui/Status.jsx';
 import { Table } from '@astryxdesign/core/Table';
 import { SOURCES } from '../lib/sources.js';
 import { useApp } from '../app/AppContext.jsx';
@@ -33,7 +33,7 @@ export default function Sources() {
       <VStack gap={3}>
         <HStack hAlign="between" vAlign="center" wrap="wrap" gap={3}>
           <Heading level={2}>Data used inside the app</Heading>
-          <Token label="NASA and partner data" color="blue" size="sm" />
+          <Tag label="NASA and partner data" />
         </HStack>
         <Table idKey="id" columns={COLUMNS} data={all.filter((s) => s.data)} density="compact" />
         <Text as="p" type="supporting">{data ? `Horizons data retrieved ${data.retrieved}: daily Earth to Mars and Earth to Moon range and Sun angle, 2023 to 2040, bundled so the app works with no link to Earth.` : 'Ephemeris file not loaded.'}</Text>

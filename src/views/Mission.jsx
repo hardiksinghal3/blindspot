@@ -5,7 +5,7 @@ import { Grid } from '@astryxdesign/core/Grid';
 import { Button } from '@astryxdesign/core/Button';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Link } from '@astryxdesign/core/Link';
-import { Token } from '@astryxdesign/core/Token';
+import { Tag } from '../ui/Status.jsx';
 import { Table } from '@astryxdesign/core/Table';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
@@ -44,7 +44,7 @@ const SEP_COLUMNS = [
   { key: 'link', header: 'Record', renderCell: (r) => (r.link ? <Link href={r.link} isExternalLink>DONKI</Link> : null) },
 ];
 const PLAN_COLUMNS = [
-  { key: 'name', header: 'Phase', renderCell: (r) => <HStack gap={2} vAlign="center"><Text>{r.name}</Text>{r.now && <Token label="Now" color="blue" size="sm" />}</HStack> },
+  { key: 'name', header: 'Phase', renderCell: (r) => <HStack gap={2} vAlign="center"><Text>{r.name}</Text>{r.now && <Tag label="Now" />}</HStack> },
   { key: 'days', header: 'Days' }, { key: 'gravity', header: 'Gravity' }, { key: 'dose', header: 'Dose rate' }, { key: 'tests', header: 'Tests that apply' },
 ];
 
@@ -65,7 +65,7 @@ export default function Mission() {
       <Grid columns={{ minWidth: 320, repeat: 'fit' }} gap={4} align="start">
         <Card>
           <VStack gap={3}>
-            <HStack hAlign="between" vAlign="center"><Heading level={3}>Distance from Earth</Heading><Token label="JPL Horizons" color="blue" size="sm" /></HStack>
+            <HStack hAlign="between" vAlign="center"><Heading level={3}>Distance from Earth</Heading><Tag label="JPL Horizons" /></HStack>
             <Heading level={2} type="display-3" accessibilityLevel={4}>{lt ? (lt.blackout ? 'No contact' : formatDelay(lt.seconds)) : 'no data'}</Heading>
             <Text as="p" color="secondary">{lt ? (lt.blackout ? 'Mars is within 2 degrees of the Sun as seen from Earth. Radio contact is unreliable, so the crew decides alone.' : `One way. Ask a question now and the earliest answer arrives in ${formatDelay(lt.seconds * 2)}, plus the time the flight surgeon needs.`) : 'Ephemeris data did not load.'}</Text>
             {lt && lt.estimate && <Text as="p" type="supporting">Estimate. Horizons gives the Earth to Mars distance for today; the ship is assumed to cover it evenly during transit.</Text>}
@@ -81,7 +81,7 @@ export default function Mission() {
 
         <Card>
           <VStack gap={3}>
-            <HStack hAlign="between" vAlign="center"><Heading level={3}>Radiation ledger</Heading><Token label="NASA limit" color="blue" size="sm" /></HStack>
+            <HStack hAlign="between" vAlign="center"><Heading level={3}>Radiation ledger</Heading><Tag label="NASA limit" /></HStack>
             <Heading level={2} type="display-3" accessibilityLevel={4}>{Math.round(dose.career)} mSv</Heading>
             <ProgressBar label={`Career dose so far, of ${dose.limit} mSv`} value={Math.min(dose.limit, dose.career)} max={dose.limit} variant={dose.shareNow >= 1 ? 'error' : 'accent'} />
             <MetadataList>
@@ -99,7 +99,7 @@ export default function Mission() {
       <VStack gap={3}>
         <HStack hAlign="between" vAlign="center" wrap="wrap" gap={3}>
           <Heading level={2}>Solar particle events</Heading>
-          <HStack gap={2} vAlign="center"><Token label="NASA DONKI" color="blue" size="sm" /><Status status={spe ? spe.level : 'go'} size="sm" /></HStack>
+          <HStack gap={3} vAlign="center"><Tag label="NASA DONKI" /><Status status={spe ? spe.level : 'go'} size="sm" /></HStack>
         </HStack>
         {spe
           ? <Banner status={spe.level === 'nogo' ? 'error' : 'warning'} title="Event in the last 24 hours" description={`${spe.inst}, onset ${spe.t.replace('T', ' ').replace('Z', ' UTC')}.`} />
@@ -117,7 +117,7 @@ export default function Mission() {
 
       <VStack gap={3}>
         <Heading level={2}>The five hazards NASA tracks</Heading>
-        <HStack gap={2} wrap="wrap">{Object.values(HAZARDS).map((x) => <Token key={x} label={x} />)}</HStack>
+        <Text>{Object.values(HAZARDS).join(' · ')}</Text>
         <Text as="p" color="secondary">Each body system in the <Link href="#/body">body poll</Link> shows which of these act on it.</Text>
       </VStack>
     </>

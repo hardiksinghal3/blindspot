@@ -7,7 +7,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Slider } from '@astryxdesign/core/Slider';
-import { Token } from '@astryxdesign/core/Token';
+import { Tag } from './ui/Status.jsx';
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 import { CalendarDaysIcon, BeakerIcon, UserIcon, ChartBarIcon, GlobeAltIcon, ClipboardDocumentListIcon, PaperAirplaneIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { AppProvider, useApp } from './app/AppContext.jsx';
@@ -43,7 +43,7 @@ function ReplayBar() {
     <Section padding={3} dividers={['bottom']} variant="muted">
       <VStack gap={2}>
         <HStack gap={4} vAlign="center" wrap="wrap">
-          <Token label="SIMULATED" color="purple" />
+          <Tag label="SIMULATED" />
           <Button label={replay.playing ? 'Pause' : 'Play'} size="sm" onClick={toggleReplay} />
           <VStack width={360} maxWidth="100%">
             <Slider label="Mission day" isLabelHidden value={replay.day} min={1} max={REPLAY_DAYS} onChange={setReplayDay} />

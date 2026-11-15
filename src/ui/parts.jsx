@@ -2,7 +2,7 @@
 import { VStack, HStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Link } from '@astryxdesign/core/Link';
-import { Token } from '@astryxdesign/core/Token';
+import { Tag } from './Status.jsx';
 import { SOURCES } from '../lib/sources.js';
 import { formatDelay } from '../lib/mission.js';
 import { Status } from './Status.jsx';
@@ -11,7 +11,7 @@ import { LegendMark } from './graphics.jsx';
 export const PAGE_WIDTH = 1120;
 export const READ_WIDTH = 720;
 export const BANNER_STATUS = { nogo: 'error', watch: 'warning', go: 'success', nodata: 'info' };
-const ORIGIN = { nasa: ['NASA number', 'blue'], clinical: ['Clinical convention', 'gray'], prototype: ['Prototype setting', 'gray'] };
+const ORIGIN = { nasa: 'NASA number', clinical: 'Clinical convention', prototype: 'Prototype setting' };
 
 export function PageIntro({ title, children, action }) {
   return (
@@ -43,13 +43,13 @@ export function SourceLinks({ ids }) {
 
 // One flight rule: what it says, where its number comes from, and what it found today.
 export function RuleItem({ rule, finding }) {
-  const [label, color] = ORIGIN[rule.origin];
+  const label = ORIGIN[rule.origin];
   return (
     <VStack gap={2}>
       <HStack hAlign="between" vAlign="center" gap={3} wrap="wrap">
         <Heading level={4}>{rule.title}</Heading>
-        <HStack gap={2} vAlign="center">
-          <Token label={label} color={color} size="sm" />
+        <HStack gap={3} vAlign="center">
+          <Tag label={label} />
           {finding && <Status status={finding.status} size="sm" />}
         </HStack>
       </HStack>

@@ -9,7 +9,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
-import { Token } from '@astryxdesign/core/Token';
+import { Tag } from '../ui/Status.jsx';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Stepper, Step } from '@astryxdesign/core/Stepper';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
@@ -42,7 +42,7 @@ function HubCard({ href, title, what, note, done, time, isDisabled }) {
       <VStack gap={2}>
         <HStack hAlign="between" vAlign="center">
           <Heading level={3}>{title}</Heading>
-          {done ? <Token label="Done today" color="green" size="sm" /> : <Token label={time} size="sm" />}
+          {done ? <Tag label="Done today" /> : <Tag label={time} />}
         </HStack>
         <Text as="p" color="secondary">{what}</Text>
         <Text as="p" type="supporting">{note}</Text>

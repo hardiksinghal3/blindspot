@@ -6,7 +6,7 @@ import { Grid } from '@astryxdesign/core/Grid';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Link } from '@astryxdesign/core/Link';
-import { Token } from '@astryxdesign/core/Token';
+import { Tag } from '../ui/Status.jsx';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Center } from '@astryxdesign/core/Center';
 import { SYSTEMS } from '../lib/rules.js';
@@ -81,7 +81,7 @@ export default function Today() {
           <VStack gap={4}>
             <HStack hAlign="between" vAlign="center">
               <Heading level={3}>Insight Gap</Heading>
-              {last && <Token label={TEST_NAME[last.test]} size="sm" />}
+              {last && <Tag label={TEST_NAME[last.test]} />}
             </HStack>
             {last ? (
               <>

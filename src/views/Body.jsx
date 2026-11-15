@@ -3,7 +3,6 @@ import { Text, Heading } from '@astryxdesign/core/Text';
 import { Card } from '@astryxdesign/core/Card';
 import { Grid } from '@astryxdesign/core/Grid';
 import { Divider } from '@astryxdesign/core/Divider';
-import { Token } from '@astryxdesign/core/Token';
 import { Link } from '@astryxdesign/core/Link';
 import { SYSTEMS, HAZARDS, RULES } from '../lib/rules.js';
 import { useApp, go } from '../app/AppContext.jsx';
@@ -36,7 +35,7 @@ export default function Body({ args }) {
             </HStack>
             <Text as="p">{sys.does}</Text>
             <Text as="p" color="secondary"><Text weight="semibold" color="inherit">In space: </Text>{sys.affects}</Text>
-            <HStack gap={2} wrap="wrap">{sys.hazards.map((x) => <Token key={x} label={HAZARDS[x]} size="sm" />)}</HStack>
+            <Text type="supporting">{sys.hazards.map((x) => HAZARDS[x]).join(' · ')}</Text>
           </VStack>
           {rules.map((r) => (
             <VStack gap={5} key={r.id}>
