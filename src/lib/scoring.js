@@ -14,7 +14,10 @@ export const METRICS = {
   pvt_lapses: { label: 'Lapses', unit: '', dir: -1, ref: [2, 2], floor: 1.5, digits: 0 },
   acuity: { label: 'Near acuity', unit: 'logMAR', dir: -1, ref: [0.0, 0.1], floor: 0.1, digits: 2, selfRef: true },
   motor_tp: { label: 'Pointing throughput', unit: 'bits/s', dir: 1, ref: [4.0, 0.6], floor: 0.3, digits: 2, selfRef: true },
-  pulse: { label: 'Resting pulse', unit: 'bpm', dir: 0, ref: [65, 8], floor: 5, digits: 0 },
+  // Seconds for five sit-to-stands. Judged only against the person's own baseline.
+  sts: { label: 'Five sit-to-stands', unit: 's', dir: -1, ref: [10, 1.5], floor: 1, digits: 1, selfRef: true },
+  // Until a baseline exists, 2 spreads either side of the reference is the general adult range of 50 to 100.
+  pulse: { label: 'Resting pulse', unit: 'bpm', dir: 0, ref: [75, 12.6], floor: 5, digits: 0 },
   temp: { label: 'Body temperature', unit: '°C', dir: 0, ref: [36.8, 0.3], floor: 0.25, digits: 1 },
   sleep: { label: 'Sleep', unit: 'h', dir: 1, ref: [7.5, 0.8], floor: 0.6, digits: 1 },
   mood: { label: 'Mood', unit: '/5', dir: 1, ref: [4, 0.8], floor: 0.7, digits: 0 },
@@ -54,6 +57,17 @@ export function zScore(metricId, value, base, shift = 0) {
   const d = (value - (base.center + shift)) / base.spread;
   if (def.dir === 0) return -Math.abs(d);
   return def.dir * d;
+}
+
+// The band each verdict covers for this person, in the metric's own units. Mirrors the flight rules.
+export function safeRange(metricId, base) {
+  const def = METRICS[metricId], f = (v) => v.toFixed(def.digits), u = def.unit ? ` ${def.unit}` : '';
+  const at = (k) => base.center + k * base.spread;
+  if (metricId === 'pulse') return `GO from ${f(Math.max(50, at(-2)))} to ${f(Math.min(100, at(2)))}${u}. Outside that: WATCH.`;
+  if (metricId === 'acuity') return `GO up to ${f(at(1))}${u} (lower is sharper). WATCH above that. NO-GO at ${f(at(2))} or worse on two checks in a row.`;
+  if (def.dir === -1) return `GO below ${f(at(1))}${u}. WATCH from ${f(at(1))} to ${f(at(2))}. NO-GO at ${f(at(2))} or above.`;
+  if (def.dir === 1) return `GO above ${f(at(-1))}${u}. WATCH from ${f(at(-2))} to ${f(at(-1))}. NO-GO at ${f(at(-2))} or below.`;
+  return null;
 }
 
 export const measuredScore = (z) => Math.round(clamp(50 + POINTS_PER_SPREAD * z, 0, 100));
@@ -214,6 +228,57 @@ export function pulseFromRgb(frames, times, fs = CAMERA_FS) {
   const agree = Math.abs(a.bpm - whole.bpm) <= CAMERA_AGREE_BPM && Math.abs(b.bpm - whole.bpm) <= CAMERA_AGREE_BPM;
   const ok = whole.quality >= CAMERA_CLEAR || (agree && whole.quality >= CAMERA_FAIR);
   return { bpm: whole.bpm, quality: whole.quality, agree, ok };
+}
+
+// Skin is found by colour only: redder than it is green or blue, and neither black nor blown out.
+export const isSkin = (r, g, b) => r > 50 && r < 250 && r > g && r > b;
+export const SKIN_CELL = 16;
+
+// The largest connected patch of skin-coloured cells in an RGBA picture, so the reading follows the palm or face
+// and ignores the wall behind it. Returns the cells, their share of the picture and the box around them (0 to 1).
+export function skinRegion(px, w, h, cell = SKIN_CELL) {
+  const cols = Math.floor(w / cell), rows = Math.floor(h / cell), on = new Uint8Array(cols * rows);
+  for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+    let n = 0;
+    for (let y = cy * cell; y < (cy + 1) * cell; y++) for (let x = cx * cell; x < (cx + 1) * cell; x++) {
+      const i = (y * w + x) * 4;
+      if (isSkin(px[i], px[i + 1], px[i + 2])) n++;
+    }
+    if (n >= 0.7 * cell * cell) on[cy * cols + cx] = 1;
+  }
+  let best = [];
+  const seen = new Uint8Array(cols * rows);
+  for (let start = 0; start < on.length; start++) {
+    if (!on[start] || seen[start]) continue;
+    const patch = [start]; seen[start] = 1;
+    for (let k = 0; k < patch.length; k++) {
+      const c = patch[k], cx = c % cols;
+      for (const n of [cx > 0 ? c - 1 : -1, cx < cols - 1 ? c + 1 : -1, c - cols, c + cols]) {
+        if (n >= 0 && n < on.length && on[n] && !seen[n]) { seen[n] = 1; patch.push(n); }
+      }
+    }
+    if (patch.length > best.length) best = patch;
+  }
+  if (!best.length) return null;
+  let x0 = cols, x1 = 0, y0 = rows, y1 = 0, sx = 0, sy = 0;
+  for (const c of best) { const cx = c % cols, cy = Math.floor(c / cols); x0 = Math.min(x0, cx); x1 = Math.max(x1, cx); y0 = Math.min(y0, cy); y1 = Math.max(y1, cy); sx += cx + 0.5; sy += cy + 0.5; }
+  return { cells: best, cols, share: best.length / (cols * rows), x: sx / best.length / cols, y: sy / best.length / rows, box: [x0 / cols, y0 / rows, (x1 + 1) / cols, (y1 + 1) / rows] };
+}
+
+// Mean colour of the skin pixels inside the given cells, and how much of that area is still skin.
+export function regionRgb(px, w, cells, cols, cell = SKIN_CELL) {
+  const skin = [0, 0, 0], all = [0, 0, 0];
+  let n = 0, total = 0;
+  for (const c of cells) {
+    const cx = c % cols, cy = Math.floor(c / cols);
+    for (let y = cy * cell; y < (cy + 1) * cell; y++) for (let x = cx * cell; x < (cx + 1) * cell; x++) {
+      const i = (y * w + x) * 4, r = px[i], g = px[i + 1], b = px[i + 2];
+      all[0] += r; all[1] += g; all[2] += b; total++;
+      if (isSkin(r, g, b)) { skin[0] += r; skin[1] += g; skin[2] += b; n++; }
+    }
+  }
+  const share = total ? n / total : 0;
+  return { rgb: share >= 0.2 ? skin.map((v) => v / n) : all.map((v) => v / (total || 1)), share, light: total ? all[1] / total : 0 };
 }
 
 // Pulse from tap timestamps (ms): median interval, quality from interval regularity.

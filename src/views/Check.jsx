@@ -17,7 +17,7 @@ import { ToggleButtonGroup, ToggleButton } from '@astryxdesign/core/ToggleButton
 import { NumberInput } from '@astryxdesign/core/NumberInput';
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 import { addCheck, addVitals, getState } from '../lib/store.js';
-import { gapLabel, MIN_BASELINE } from '../lib/scoring.js';
+import { gapLabel, safeRange, MIN_BASELINE } from '../lib/scoring.js';
 import { formatDelay, isoDate } from '../lib/mission.js';
 import { useApp, go } from '../app/AppContext.jsx';
 import { Status } from '../ui/Status.jsx';
@@ -27,11 +27,13 @@ import Pvt from '../tests/Pvt.jsx';
 import Motor from '../tests/Motor.jsx';
 import Vision from '../tests/Vision.jsx';
 import Pulse from '../tests/Pulse.jsx';
+import Balance, { REPS, MIN_SECONDS, MAX_SECONDS } from '../tests/Balance.jsx';
 
 const TESTS = {
   pvt: { name: 'Alertness', what: 'Reaction test', time: '1 or 3 min', tag: 'Flown on ISS as Reaction Self-Test', system: 'brain', ask: 'How alert are you right now?', needs: 'Keyboard or touch' },
   vision: { name: 'Vision', what: 'Near acuity and grid, each eye', time: '2 min', tag: 'Modelled on ISS vision checks', system: 'eyes', ask: 'How well are you seeing right now?', needs: 'A bank card, once, to size the screen' },
   motor: { name: 'Hands', what: 'Pointing test', time: '30 s', tag: 'Modelled on NASA Fine Motor Skills', system: 'hands', ask: 'How quick and steady are your hands right now?', needs: 'Mouse, trackpad or touch' },
+  balance: { name: 'Balance', what: 'Five sit-to-stands, timed', time: '1 min', tag: 'Screening grade, under gravity only', system: 'frame', ask: 'How steady and strong are you on your feet right now?', needs: 'A sturdy chair' },
   pulse: { name: 'Pulse', what: 'Tap along or camera', time: '30 s', tag: 'Screening grade', system: 'heart', ask: null, needs: 'Nothing, or a camera' },
 };
 const MARKS = [{ value: 0, label: '0 far below my normal' }, { value: 50, label: '50 my normal' }, { value: 100, label: '100 my best' }];
@@ -62,7 +64,6 @@ function Hub() {
       <Grid columns={{ minWidth: 300, repeat: 'fit' }} gap={4}>
         {Object.entries(TESTS).map(([id, t]) => <HubCard key={id} href={`#/check/${id}`} title={t.name} what={t.what} note={`${t.tag} · ${t.needs}`} done={done(id)} time={t.time} />)}
         <HubCard href="#/check/vitals" title="Readings" what="Sleep, mood, temperature, blood pressure, blood sugar, oxygen, exercise, cabin air" note="Typed in from your devices" done={vitalsDone} time="1 min" />
-        <HubCard title="Balance" what="Standing sway and sit-to-stand for surface stays and landing day" note="Not built yet. Balance tests do not apply in weightlessness." time="Planned" isDisabled />
       </Grid>
     </>
   );
@@ -83,6 +84,13 @@ function resultOf(type, r) {
     return {
       values: { motor_tp: +m.throughput.toFixed(2) }, detail: { errorRate: m.errorRate, meanTime: Math.round(m.meanTime) },
       lines: [['Throughput', `${m.throughput.toFixed(2)} bits per second`], ['Missed targets', `${Math.round(m.errorRate * 100)} %`], ['Mean time per target', `${Math.round(m.meanTime)} ms`]],
+    };
+  }
+  if (type === 'balance') {
+    if (!(r.seconds >= MIN_SECONDS && r.seconds <= MAX_SECONDS)) return { invalid: `That took ${r.seconds.toFixed(1)} seconds, which is outside the ${MIN_SECONDS} to ${MAX_SECONDS} seconds a real attempt takes.` };
+    return {
+      values: { sts: +r.seconds.toFixed(1) }, detail: { reps: REPS },
+      lines: [['Time', `${r.seconds.toFixed(1)} seconds`], ['Sit-to-stands', REPS], ['Seconds per stand', (r.seconds / REPS).toFixed(1)]],
     };
   }
   if (type === 'vision') {
@@ -136,7 +144,11 @@ function Reveal({ type, t, felt, quick, lines }) {
   const findings = d.result.systems[t.system].findings.filter((f) => f.status !== 'go');
   const lt = d.lt;
   const reply = lt ? (lt.blackout ? 'Earth is out of contact. This call is yours.' : `Earth's reply would take at least ${formatDelay(lt.seconds * 2)}. This call is yours.`) : '';
-  const baseNote = m.base.provisional ? `Scored against a provisional reference. Your personal baseline starts after ${MIN_BASELINE} checks (you have ${m.base.n}).` : `Scored against your own baseline from your first ${m.base.n} checks.`;
+  const baseNote = m.base.provisional ? `This is reading ${m.base.n} of the ${MIN_BASELINE} needed to learn your own normal. Until then it is judged against a general range, so treat this verdict as a rough guide.` : `Scored against your own baseline from your first ${m.base.n} checks.`;
+  const range = m.base.forming ? null : safeRange(m.metricId, m.base);
+  // Pulse and balance have their own flight rule, and that rule gives the verdict.
+  const own = d.result.findings.find((f) => f.rule.id === type);
+  const ruled = own ? own.status : p.status;
   const st = p.unaware ? 'nogo' : p.status;
   return (
     <>
@@ -153,12 +165,14 @@ function Reveal({ type, t, felt, quick, lines }) {
             </HStack>
             <GapBar felt={felt} measured={p.score} status={st} />
             <Legend />
+            {range && <Text as="p"><Text weight="semibold">Your safe range. </Text>{range}</Text>}
             <Text as="p" type="supporting">{baseNote}{type === 'pvt' && quick ? ' Quick mode is demo grade; the standard test is 3 minutes.' : ''}</Text>
           </VStack>
         ) : (
           <VStack gap={4}>
-            <HStack hAlign="between" vAlign="center"><Text type="label">{m.base.forming ? `Baseline reading ${m.base.n} of ${MIN_BASELINE}` : 'Result'}</Text><Status status={p.status} /></HStack>
+            <HStack hAlign="between" vAlign="center"><Text type="label">{m.base.forming ? `Baseline reading ${m.base.n} of ${MIN_BASELINE}` : 'Result'}</Text><Status status={ruled} /></HStack>
             <Heading level={2} type="display-2" accessibilityLevel={3}>{p.value.toFixed(m.def.digits)} {m.def.unit}</Heading>
+            {range && <Text as="p"><Text weight="semibold">Your safe range. </Text>{range}</Text>}
             <Text as="p" type="supporting">{m.base.forming ? `This result depends on your screen or pointing device, so it is not judged against anyone else. It becomes part of your own baseline, and the Insight Gap for this test starts after ${MIN_BASELINE} readings.${felt != null ? ` Your call of ${felt} is saved.` : ''}` : baseNote}</Text>
           </VStack>
         )}
@@ -209,6 +223,7 @@ function Flow({ type }) {
       {phase === 'test' && type === 'motor' && <Motor onDone={finish} />}
       {phase === 'test' && type === 'vision' && <Vision onDone={finish} />}
       {phase === 'test' && type === 'pulse' && <Pulse onDone={finish} />}
+      {phase === 'test' && type === 'balance' && <Balance onDone={finish} />}
       {phase === 'invalid' && (
         <Card padding={5}>
           <VStack gap={3}>

@@ -54,7 +54,7 @@ export default function Mission() {
   const spe = d.ctx.spe, lt = d.lt, dose = d.dose;
   const plan = d.profile.phases.map((p, i) => {
     const e = ENVIRONMENTS[p.env];
-    return { id: i, name: e.name, now: i === d.phase.index, days: p.days, gravity: e.gravity === 'micro' ? 'Weightless' : `${e.g} g`, dose: `${e.dose} mSv/day`, tests: e.gravity === 'micro' ? 'Reaction, vision, pointing, pulse' : 'Reaction, vision, pointing, pulse; balance tests planned' };
+    return { id: i, name: e.name, now: i === d.phase.index, days: p.days, gravity: e.gravity === 'micro' ? 'Weightless' : `${e.g} g`, dose: `${e.dose} mSv/day`, tests: e.gravity === 'micro' ? 'Reaction, vision, pointing, pulse' : 'Reaction, vision, pointing, pulse, sit-to-stand' };
   });
   return (
     <>

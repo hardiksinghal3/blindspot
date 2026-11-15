@@ -11,7 +11,7 @@ import { PageIntro, Legend } from '../ui/parts.jsx';
 
 const CARDS = [
   ['pvt', 'Mean response speed in the reaction test. Higher is better.'], ['lapses', 'Responses of 355 ms or slower.'],
-  ['vision', 'Near acuity, worse eye. Each 0.1 is one line on the chart; lower is better.'], ['motor', 'Pointing throughput. Higher is better.'],
+  ['vision', 'Near acuity, worse eye. Each 0.1 is one line on the chart; lower is better.'], ['motor', 'Pointing throughput. Higher is better.'], ['balance', 'Seconds for five sit-to-stands. Lower is better.'],
   ['temp', 'Dashed line: expected for this mission day. Core temperature rises about 1 °C over the first 2.5 months of flight, so the band rises with it.', true],
   ['sleep'], ['pulse'], ['mood'],
 ];

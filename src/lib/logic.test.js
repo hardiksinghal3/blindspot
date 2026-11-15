@@ -102,6 +102,37 @@ test('camera pulse: refuses a recording with no pulse in it', () => {
   for (let seed = 1; seed <= 40; seed++) if (S.pulseFromRgb(...cameraRecording(70, 0, seed * 97)).ok) accepted++;
   ok(accepted <= 2, accepted + ' of 40 pulse-free recordings were accepted');
 });
+test('first pulse readings are judged against 50 to 100, then against your own baseline', () => {
+  const first = S.baseline('pulse', [91]);
+  ok(first.provisional); ok(S.zScore('pulse', 91, first) > -2); ok(S.zScore('pulse', 100, first) > -2);
+  ok(S.zScore('pulse', 101, first) <= -2); ok(S.zScore('pulse', 49, first) <= -2);
+  eq(S.safeRange('pulse', first), 'GO from 50 to 100 bpm. Outside that: WATCH.');
+  eq(S.safeRange('pulse', S.baseline('pulse', [62, 64, 66])), 'GO from 54 to 74 bpm. Outside that: WATCH.');
+  eq(S.safeRange('pvt_speed', { center: 3.3, spread: 0.4 }), 'GO above 2.90 1/s. WATCH from 2.50 to 2.90. NO-GO at 2.50 or below.');
+});
+test('the camera locks onto the largest skin-coloured patch and reads only that', () => {
+  const w = 160, h = 96, px = new Uint8ClampedArray(w * h * 4);
+  const paint = (x0, y0, x1, y1, c) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) px.set([...c, 255], (y * w + x) * 4); };
+  paint(0, 0, w, h, [90, 110, 150]);
+  paint(0, 0, 16, 16, [200, 150, 120]);
+  paint(64, 32, 128, 96, [170, 120, 100]);
+  const r = S.skinRegion(px, w, h);
+  eq(r.cells.length, 16); eq(r.box.join(), [0.4, 1 / 3, 0.8, 1].join());
+  const c = S.regionRgb(px, w, r.cells, r.cols);
+  eq(c.rgb.join(), '170,120,100'); eq(c.share, 1);
+  paint(0, 0, w, h, [90, 110, 150]);
+  eq(S.skinRegion(px, w, h), null);
+  ok(S.regionRgb(px, w, r.cells, r.cols).share < 0.5);
+});
+test('sit-to-stand is judged only against your own baseline, slower is worse', () => {
+  ok(S.baseline('sts', [9.0]).forming);
+  const b = S.baseline('sts', [9.0, 9.4, 9.8]);
+  eq(b.center, 9.4); eq(b.spread, 1);
+  eq(S.statusFromZ(S.zScore('sts', 10.0, b)), 'go');
+  eq(S.statusFromZ(S.zScore('sts', 10.6, b)), 'watch');
+  eq(S.statusFromZ(S.zScore('sts', 11.5, b)), 'nogo');
+  eq(S.safeRange('sts', b), 'GO below 10.4 s. WATCH from 10.4 to 11.4. NO-GO at 11.4 or above.');
+});
 test('pulse from taps', () => {
   const t = Array.from({ length: 12 }, (_, i) => i * 1000);
   const r = S.pulseFromTaps(t); eq(r.bpm, 60); eq(r.quality, 1);

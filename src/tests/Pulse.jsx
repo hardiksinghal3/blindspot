@@ -7,13 +7,15 @@ import { Grid } from '@astryxdesign/core/Grid';
 import { Button } from '@astryxdesign/core/Button';
 import { Banner } from '@astryxdesign/core/Banner';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
-import { pulseFromTaps, pulseFromRgb, CAMERA_CLEAR } from '../lib/scoring.js';
+import { pulseFromTaps, pulseFromRgb, skinRegion, regionRgb, SKIN_CELL, CAMERA_CLEAR } from '../lib/scoring.js';
 import { STAGE, INK, NUM } from './stage.js';
 
 export const MIN_QUALITY = 0.3;
 const NEED = 15, SECONDS = 30, EXTRA = 15;
-const SAMPLE_W = 96, SAMPLE_H = 84;
-const VIDEO = { display: 'block', width: '100%', maxWidth: 420, borderRadius: 'var(--radius-container)', transform: 'scaleX(-1)', background: 'var(--color-background-muted)' };
+const SAMPLE_W = 320;
+const VIDEO = { display: 'block', width: '100%', maxWidth: 480, borderRadius: 'var(--radius-container)', background: 'var(--color-background-muted)' };
+// Safari pauses a video that is not rendered, so the source video stays in the page at one pixel.
+const HIDDEN = { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' };
 
 function Tap({ onDone, onFail }) {
   const stage = useRef(null);
@@ -49,78 +51,109 @@ function Tap({ onDone, onFail }) {
 }
 
 const AIM = {
-  face: { hold: 'Fill the picture with your face. Hold still and breathe normally.', closer: 'Move closer so your face fills the picture.' },
-  palm: { hold: 'Hold your palm flat, close to the camera, so it fills the picture. Rest your elbow on the desk.', closer: 'Bring your palm closer so it fills the picture.' },
+  face: { name: 'face', find: 'Step 1 of 2: finding your face. Sit close and look at the camera.', hold: 'Face found. Hold still and breathe normally.', share: 0.06 },
+  palm: { name: 'palm', find: 'Step 1 of 2: finding your palm. Hold it flat, close to the camera, elbow on the desk.', hold: 'Palm found. Keep it inside the box.', share: 0.12 },
 };
 const DARK = 'Too dark. Turn towards a window or a lamp.';
-
-// Mean colour of the skin in the middle of the picture, plus whether the frame was usable.
-function readFrame(g, v) {
-  g.drawImage(v, v.videoWidth * 0.2, v.videoHeight * 0.15, v.videoWidth * 0.6, v.videoHeight * 0.7, 0, 0, SAMPLE_W, SAMPLE_H);
-  const px = g.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data, all = [0, 0, 0], skin = [0, 0, 0];
-  let count = 0;
-  for (let i = 0; i < px.length; i += 4) {
-    const r = px[i], gr = px[i + 1], b = px[i + 2];
-    all[0] += r; all[1] += gr; all[2] += b;
-    if (r > 50 && r < 250 && r > gr && r > b) { skin[0] += r; skin[1] += gr; skin[2] += b; count++; }
-  }
-  const total = px.length / 4, hasSkin = count / total >= 0.2;
-  return { rgb: hasSkin ? skin.map((x) => x / count) : all.map((x) => x / total), hasSkin, dark: all[1] / total < 40 };
-}
+const LOCK_MS = 1200, GIVE_UP_MS = 8000, LOST_MS = 1000, MAX_RESTARTS = 3;
 
 function Camera({ aim, onDone, onFail, onStop }) {
-  const video = useRef(null);
+  const video = useRef(null), view = useRef(null);
   const [status, setStatus] = useState('Starting camera.');
-  const [progress, setProgress] = useState(0);
+  const [left, setLeft] = useState(null);
+  const [total, setTotal] = useState(SECONDS);
+  const [feed, setFeed] = useState('');
   useEffect(() => {
     let stream = null, raf = 0, stopped = false;
     const release = () => { stopped = true; cancelAnimationFrame(raf); if (stream) stream.getTracks().forEach((t) => t.stop()); };
     (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('no camera support');
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, audio: false });
       } catch { if (!stopped) onFail('The camera is not available or permission was refused. Tap along instead.'); return; }
       if (stopped) return stream.getTracks().forEach((t) => t.stop());
-      const v = video.current;
+      const v = video.current, a = AIM[aim];
       v.srcObject = stream;
       await v.play().catch(() => {});
-      setStatus(AIM[aim].hold);
-      const canvas = document.createElement('canvas'); canvas.width = SAMPLE_W; canvas.height = SAMPLE_H;
+      setStatus(a.find);
+      const canvas = document.createElement('canvas');
       const g = canvas.getContext('2d', { willReadFrequently: true });
-      const frames = [], times = [], flags = [];
-      const t0 = performance.now(); let limit = SECONDS, shown = -1, lastSecond = 0;
-      // The newest SECONDS of the recording, and how much of it was dark or had no skin in view.
+      const out = view.current.getContext('2d');
+      view.current.style.color = 'var(--color-accent)';
+      const accent = getComputedStyle(view.current).color;
+      let w = 0, h = 0, roi = null, anchor = null, since = 0, lostSince = 0, restarts = 0, guessed = false;
+      let frames = [], times = [], flags = [];
+      const began = performance.now(); let t0 = 0, limit = SECONDS, shown = -1, lastSecond = -1, told = false;
       const recent = (t, secs) => {
         const from = times.findIndex((x) => x >= t - secs * 1000), cut = from < 0 ? 0 : from, f = flags.slice(cut);
-        return { frames: frames.slice(cut), times: times.slice(cut), dark: f.filter((x) => x.dark).length / (f.length || 1), away: f.filter((x) => !x.hasSkin).length / (f.length || 1) };
+        return { frames: frames.slice(cut), times: times.slice(cut), dark: f.filter((x) => x.dark).length / (f.length || 1), away: f.filter((x) => x.away).length / (f.length || 1) };
       };
+      const lock = (region, now) => { roi = region; t0 = now; frames = []; times = []; flags = []; limit = SECONDS; shown = -1; lastSecond = -1; lostSince = 0; setTotal(SECONDS); };
       const frame = () => {
         if (stopped) return;
-        const t = performance.now() - t0;
-        if (v.videoWidth) { const f = readFrame(g, v); frames.push(f.rgb); times.push(t); flags.push(f); }
-        const pct = Math.floor(Math.min(100, (t / (limit * 1000)) * 100));
-        if (pct !== shown) { shown = pct; setProgress(pct); }
-        const second = Math.floor(t / 1000);
-        if (second !== lastSecond && t < limit * 1000) {
-          lastSecond = second;
-          const now = recent(t, 3);
-          if (now.dark > 0.5) setStatus(DARK);
-          else if (now.away > 0.5) setStatus(AIM[aim].closer);
-          else if (limit > SECONDS) setStatus(`The signal is weak, so this is measuring ${EXTRA} seconds more. Keep still.`);
-          else if (second < 10) setStatus(AIM[aim].hold);
-          else setStatus(pulseFromRgb(frames, times).ok ? 'Pulse signal found. Keep still.' : 'Looking for your pulse. Keep still.');
+        const now = performance.now();
+        if (!v.videoWidth) { raf = requestAnimationFrame(frame); return; }
+        if (!w) {
+          w = SAMPLE_W; h = Math.floor((SAMPLE_W * v.videoHeight) / v.videoWidth / SKIN_CELL) * SKIN_CELL;
+          canvas.width = w; canvas.height = h; view.current.width = w * 2; view.current.height = h * 2;
+          g.imageSmoothingQuality = 'high';
         }
-        if (t >= limit * 1000) {
-          const w = recent(t, SECONDS), r = pulseFromRgb(w.frames, w.times);
-          if (r.ok) { release(); return onDone({ bpm: r.bpm, quality: r.quality, method: aim }); }
-          if (limit === SECONDS && frames.length) limit = SECONDS + EXTRA;
-          else {
-            release();
-            const why = !frames.length ? 'The camera sent no picture.'
-              : w.dark > 0.5 ? 'The picture was too dark.'
-              : w.away > 0.5 ? `Your ${aim} was not filling the picture.`
-              : `No steady pulse signal was found (signal quality ${Math.round(r.quality * 100)} %, and ${Math.round(CAMERA_CLEAR * 100)} % is needed).`;
-            return onFail(`${why} No number is shown rather than a guess. Bright, even light on the skin helps most. Try again, try the other camera option, or tap along.`);
+        if (!told) {
+          const set = stream.getVideoTracks()[0]?.getSettings?.() || {};
+          setFeed(`Camera picture: ${v.videoWidth} × ${v.videoHeight}${set.frameRate ? `, ${Math.round(set.frameRate)} frames per second` : ''}`);
+          told = true;
+        }
+        g.drawImage(v, 0, 0, w, h);
+        const px = g.getImageData(0, 0, w, h).data;
+        out.save(); out.scale(-1, 1); out.drawImage(v, -view.current.width, 0, view.current.width, view.current.height); out.restore();
+
+        if (!roi) {
+          const found = skinRegion(px, w, h);
+          const big = found && found.share >= a.share;
+          if (big && anchor && Math.hypot(found.x - anchor.x, found.y - anchor.y) < 0.08) { if (now - since >= LOCK_MS) { guessed = false; lock(found, now); setStatus(a.hold); } }
+          else { anchor = big ? found : null; since = now; }
+          if (!roi && now - began > GIVE_UP_MS && now - since < LOCK_MS / 2 && !restarts) {
+            // Nothing skin-coloured held still: read the middle of the picture, as a last resort.
+            const cols = w / SKIN_CELL, rows = h / SKIN_CELL, cells = [];
+            for (let cy = Math.floor(rows * 0.15); cy < rows * 0.85; cy++) for (let cx = Math.floor(cols * 0.2); cx < cols * 0.8; cx++) cells.push(cy * cols + cx);
+            guessed = true; lock({ cells, cols, box: [0.2, 0.15, 0.8, 0.85] }, now);
+            setStatus(`Your ${a.name} could not be picked out, so the middle of the picture is being read. Fill the box with your ${a.name}.`);
+          }
+          const second = Math.floor((now - began) / 1000);
+          if (!roi && second !== lastSecond) { lastSecond = second; setStatus(regionRgb(px, w, [...Array((w / SKIN_CELL) * (h / SKIN_CELL)).keys()], w / SKIN_CELL).light < 40 ? DARK : restarts ? `Your ${a.name} left the box. Hold it still to start again.` : a.find); }
+        } else {
+          const t = now - t0, f = regionRgb(px, w, roi.cells, roi.cols);
+          const away = f.share < 0.5, dark = f.light < 40;
+          frames.push(f.rgb); times.push(t); flags.push({ away, dark });
+          const [x0, y0, x1, y1] = roi.box, W = view.current.width, H = view.current.height;
+          out.lineWidth = 4; out.strokeStyle = accent; out.strokeRect((1 - x1) * W, y0 * H, (x1 - x0) * W, (y1 - y0) * H);
+          if (away && !guessed && restarts < MAX_RESTARTS) {
+            if (!lostSince) lostSince = now;
+            else if (now - lostSince > LOST_MS) { roi = null; anchor = null; since = now; restarts++; lastSecond = -1; setLeft(null); raf = requestAnimationFrame(frame); return; }
+          } else lostSince = 0;
+          const remain = Math.max(0, Math.ceil(limit - t / 1000));
+          if (remain !== shown) { shown = remain; setLeft(remain); }
+          const second = Math.floor(t / 1000);
+          if (second !== lastSecond && t < limit * 1000) {
+            lastSecond = second;
+            const last = recent(t, 3);
+            if (last.dark > 0.5) setStatus(DARK);
+            else if (last.away > 0.5) setStatus(`Fill the box with your ${a.name}.`);
+            else if (limit > SECONDS) setStatus(`The signal is weak, so this is measuring ${EXTRA} seconds more. Keep still.`);
+            else if (second >= 10) setStatus(pulseFromRgb(frames, times).ok ? 'Pulse signal found. Keep still.' : 'Looking for your pulse. Keep still.');
+            else if (second >= 2 && !guessed) setStatus(a.hold);
+          }
+          if (t >= limit * 1000) {
+            const win = recent(t, SECONDS), r = pulseFromRgb(win.frames, win.times);
+            if (r.ok) { release(); return onDone({ bpm: r.bpm, quality: r.quality, method: aim }); }
+            if (limit === SECONDS) { limit = SECONDS + EXTRA; setTotal(limit); }
+            else {
+              release();
+              const why = win.dark > 0.5 ? 'The picture was too dark.'
+                : win.away > 0.5 ? `Your ${a.name} was not filling the box.`
+                : `No steady pulse signal was found (signal quality ${Math.round(r.quality * 100)} %, and ${Math.round(CAMERA_CLEAR * 100)} % is needed).`;
+              return onFail(`${why} No number is shown rather than a guess. Bright, even light on the skin helps most. Try again, try the other camera option, or tap along.`);
+            }
           }
         }
         raf = requestAnimationFrame(frame);
@@ -129,12 +162,19 @@ function Camera({ aim, onDone, onFail, onStop }) {
     })();
     return release;
   }, []);
+  const measuring = left != null;
   return (
-    <VStack gap={3}>
-      <ProgressBar label="Measurement progress" isLabelHidden variant="neutral" value={progress} />
+    <VStack gap={4}>
+      <VStack gap={1} hAlign="center">
+        <Heading level={2} type="display-2" accessibilityLevel={3} color={measuring ? 'accent' : 'secondary'}>{measuring ? `${left} s` : 'Getting ready'}</Heading>
+        <Text type="label">{measuring ? `Step 2 of 2: measuring. ${total - left} of ${total} seconds done.` : 'The clock starts once your skin is found.'}</Text>
+      </VStack>
+      <ProgressBar label="Measurement progress" isLabelHidden isIndeterminate={!measuring} value={measuring ? total - left : 0} max={total} />
       <VStack gap={3} hAlign="center">
-        <video ref={video} autoPlay playsInline muted style={VIDEO} />
+        <canvas ref={view} style={VIDEO} role="img" aria-label="Camera picture with the measured area outlined" />
+        <video ref={video} autoPlay playsInline muted style={HIDDEN} />
         <Text as="p" color="secondary" justify="center">{status}</Text>
+        {feed && <Text as="p" type="supporting" justify="center">{feed}</Text>}
         <Button label="Stop and tap along instead" size="sm" onClick={onStop} />
       </VStack>
     </VStack>
@@ -159,7 +199,7 @@ export default function Pulse({ onDone }) {
           <VStack gap={1}><Heading level={3}>Camera: face</Heading><Text as="p" color="secondary">About {SECONDS} seconds. Reads tiny colour changes in your skin. Needs good light. Nothing is saved or sent.</Text></VStack>
         </ClickableCard>
         <ClickableCard label="Camera: palm" onClick={() => setMode('palm')}>
-          <VStack gap={1}><Heading level={3}>Camera: palm</Heading><Text as="p" color="secondary">About {SECONDS} seconds. Hold your palm flat to the camera with your elbow on the desk. Nothing is saved or sent.</Text></VStack>
+          <VStack gap={1}><Heading level={3}>Camera: palm</Heading><Text as="p" color="secondary">About {SECONDS} seconds. Finds your palm first, then reads only that area. Rest your elbow on the desk. Nothing is saved or sent.</Text></VStack>
         </ClickableCard>
       </Grid>
     </VStack>

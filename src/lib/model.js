@@ -3,8 +3,8 @@ import { METRICS, baseline, zScore, measuredScore, statusFromZ, insightGap, isUn
 import { ENVIRONMENTS, PROFILES, missionDay, phaseAt, lightTime, nextBlackout, doseLedger, expectedTempShift, isoDate, DAY_MS } from './mission.js';
 import { evaluate } from './rules.js';
 
-export const TEST_METRIC = { pvt: 'pvt_speed', vision: 'acuity', motor: 'motor_tp', pulse: 'pulse' };
-export const TEST_NAME = { pvt: 'Alertness', vision: 'Vision', motor: 'Hands', pulse: 'Pulse' };
+export const TEST_METRIC = { pvt: 'pvt_speed', vision: 'acuity', motor: 'motor_tp', pulse: 'pulse', balance: 'sts' };
+export const TEST_NAME = { pvt: 'Alertness', vision: 'Vision', motor: 'Hands', pulse: 'Pulse', balance: 'Balance' };
 
 const day = (t) => isoDate(t);
 
@@ -51,6 +51,7 @@ export function derive(state, nowIso, data, extra = {}) {
     vision: scored(state, 'acuity'),
     motor: scored(state, 'motor_tp'),
     pulse: scored(state, 'pulse'),
+    balance: scored(state, 'sts'),
     temp: scored(state, 'temp', tempShift),
     sleep: scored(state, 'sleep'),
     mood: scored(state, 'mood'),
@@ -65,7 +66,7 @@ export function derive(state, nowIso, data, extra = {}) {
   const visionCheck = lastCheck('vision');
 
   const gaps = [];
-  for (const k of ['pvt', 'vision', 'motor']) if (m[k]) for (const p of m[k].points) if (p.gap != null) gaps.push({ t: p.t, gap: p.gap, test: k, status: p.status, unaware: p.unaware, felt: p.felt, score: p.score });
+  for (const k of ['pvt', 'vision', 'motor', 'balance']) if (m[k]) for (const p of m[k].points) if (p.gap != null) gaps.push({ t: p.t, gap: p.gap, test: k, status: p.status, unaware: p.unaware, felt: p.felt, score: p.score });
   gaps.sort((a, b) => (a.t < b.t ? -1 : 1));
 
   const daysSinceGravityChange = phase.dayInPhase;
@@ -74,6 +75,7 @@ export function derive(state, nowIso, data, extra = {}) {
     vision: m.vision && { ...m.vision.last, prevZ: m.vision.points.length > 1 ? m.vision.points[m.vision.points.length - 2].z : null, amsler: visionCheck && visionCheck.detail ? visionCheck.detail.amsler ?? null : null },
     motor: m.motor && m.motor.last,
     pulse: m.pulse && m.pulse.last,
+    balance: m.balance && m.balance.last,
     temp: m.temp && m.temp.last,
     sleep: m.sleep ? m.sleep.points.map((p) => p.value) : null,
     mood: m.mood ? m.mood.points.map((p) => p.value) : null,

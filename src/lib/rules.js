@@ -82,7 +82,7 @@ export const RULES = [
   {
     id: 'pulse', system: 'heart', title: 'Resting pulse against your baseline', origin: 'prototype',
     trigger: 'WATCH at 2 spreads from baseline, or outside 50 to 100 beats per minute.', sources: ['clinical'],
-    check: (c) => c.pulse && (c.pulse.z <= -2 || c.pulse.value > 100 || c.pulse.value < 50 ? F('watch', `Resting pulse ${Math.round(c.pulse.value)} beats per minute; your baseline is ${Math.round(c.pulse.base.center)}.`, 'Rest 5 minutes and measure again. Report if it persists.') : F('go', `Resting pulse ${Math.round(c.pulse.value)} beats per minute.`, null)),
+    check: (c) => c.pulse && (c.pulse.z <= -2 || c.pulse.value > 100 || c.pulse.value < 50 ? F('watch', `Resting pulse ${Math.round(c.pulse.value)} beats per minute; ${c.pulse.base.provisional ? 'the general range used until you have 3 readings is 50 to 100' : `your baseline is ${Math.round(c.pulse.base.center)}`}.`, 'Rest 5 minutes and measure again. Report if it persists.') : F('go', `Resting pulse ${Math.round(c.pulse.value)} beats per minute.`, null)),
   },
   {
     id: 'bp', system: 'heart', title: 'Blood pressure', origin: 'clinical',
@@ -105,6 +105,14 @@ export const RULES = [
     trigger: 'WATCH under 70 or over 180 mg/dL. NO-GO under 54 or over 250 mg/dL.', sources: ['clinical'],
     check: (c) => c.glucose != null && (c.glucose < 54 || c.glucose > 250 ? F('nogo', `Blood sugar ${c.glucose} mg/dL.`, c.glucose < 54 ? 'Eat or drink something sugary now. Do not work alone. Retest in 15 minutes.' : 'Drink water, retest, and contact the flight surgeon.')
       : c.glucose < 70 || c.glucose > 180 ? F('watch', `Blood sugar ${c.glucose} mg/dL.`, c.glucose < 70 ? 'Eat, then retest in 15 minutes.' : 'Retest before the next meal and log it.') : F('go', `Blood sugar ${c.glucose} mg/dL.`, null)),
+  },
+  {
+    id: 'balance', system: 'frame', title: 'Sit-to-stand against your baseline', origin: 'prototype',
+    trigger: 'Time for five sit-to-stands under gravity. WATCH at 1 spread slower than your baseline, NO-GO at 2. No verdict until you have 3 readings.', sources: ['fieldtest'],
+    check: (c) => c.balance && (c.balance.base.forming ? F('go', `Five sit-to-stands in ${c.balance.value.toFixed(1)} seconds. Baseline reading ${c.balance.base.n} of 3.`, null)
+      : c.balance.status === 'go' ? F('go', `Five sit-to-stands in ${c.balance.value.toFixed(1)} seconds, within your normal band.`, null)
+      : F(c.balance.status, `Five sit-to-stands took ${c.balance.value.toFixed(1)} seconds; your baseline is ${c.balance.base.center.toFixed(1)}.`,
+        c.balance.status === 'nogo' ? 'No ladders, driving or suited work. Move with a hand on a rail and retest after rest.' : 'Keep a hand on a rail when you move. Retest before any work on foot.')),
   },
   {
     id: 'exercise', system: 'frame', title: 'Exercise countermeasure adherence', origin: 'prototype',
