@@ -22,6 +22,7 @@ export const SOURCES = {
   eimo: { org: 'NASA', title: 'Earth-Independent Medical Operations concept of operations', url: 'https://ntrs.nasa.gov/citations/20250000009' },
   conjunction: { org: 'NASA / JPL', title: 'Mars fleet lies low during solar conjunction (2021 commanding pause)', url: 'https://www.jpl.nasa.gov/news/nasas-mars-fleet-lies-low-with-sun-between-earth-and-red-planet/' },
   csa: { org: 'Canadian Space Agency', title: 'Monitoring radiation for astronaut health', url: 'https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp' },
+  mediapipe: { org: 'Google', title: 'MediaPipe Hand Landmarker model, Apache 2.0 licence (finds the palm for the camera pulse test)', url: 'https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker' },
   clinical: { org: 'Clinical convention', title: 'Common clinical screening thresholds. Not a NASA standard; a flight surgeon would set these.', url: null },
   prototype: { org: 'This prototype', title: 'A setting chosen for this prototype. Not validated.', url: null },
 };

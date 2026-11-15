@@ -5,6 +5,7 @@ import * as S from './scoring.js';
 import * as M from './mission.js';
 import { evaluate, RULES, SYSTEMS } from './rules.js';
 import { SOURCES } from './sources.js';
+import { palmShape, shapeArea } from './hand.js';
 import { derive } from './model.js';
 import { emptyState } from './store.js';
 import { activeSpe, recentEvents } from './spaceweather.js';
@@ -237,4 +238,13 @@ test('replay: impaired and unaware appears during short sleep and clears afterwa
   eq(at(150).result.systems.eyes.status, 'watch');
   const firstUnaware = at(180).gaps.find((g) => g.unaware && g.test === 'pvt');
   ok(firstUnaware, 'has unaware'); 
+});
+
+test('the palm outline uses the wrist, thumb base and knuckles, pulled in from the edge', () => {
+  const hand = Array.from({ length: 21 }, () => ({ x: 0.9, y: 0.9 }));
+  [[0, 0.5, 0.8], [1, 0.4, 0.7], [5, 0.4, 0.5], [9, 0.5, 0.5], [13, 0.55, 0.5], [17, 0.6, 0.5]].forEach(([i, x, y]) => { hand[i] = { x, y }; });
+  const full = palmShape(hand, 1), inset = palmShape(hand);
+  eq(full.length, 6); ok(full.every((p) => p.x <= 0.6 && p.y <= 0.8));
+  ok(Math.abs(shapeArea(inset) / shapeArea(full) - 0.81) < 1e-9);
+  eq(shapeArea([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }]), 1);
 });

@@ -8,11 +8,31 @@ import { Button } from '@astryxdesign/core/Button';
 import { Banner } from '@astryxdesign/core/Banner';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import { pulseFromTaps, pulseFromRgb, skinRegion, regionRgb, SKIN_CELL, CAMERA_CLEAR } from '../lib/scoring.js';
+import { loadHandFinder, palmShape, shapeArea, MIN_PALM_AREA } from '../lib/hand.js';
 import { STAGE, INK, NUM } from './stage.js';
 
 export const MIN_QUALITY = 0.3;
 const NEED = 15, SECONDS = 30, EXTRA = 15;
-const SAMPLE_W = 320;
+const SAMPLE_W = 320, PATCH = 192;
+// Asks for full HD at 30 frames per second; the camera gives the nearest it supports and the screen shows what arrived.
+const CAMERA = { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } };
+
+// Mean colour of the video inside an outline (points as shares of the picture), read at up to PATCH pixels across.
+function readShape(g, v, shape) {
+  const W = v.videoWidth, H = v.videoHeight, xs = shape.map((p) => p.x * W), ys = shape.map((p) => p.y * H);
+  const x0 = Math.max(0, Math.floor(Math.min(...xs))), y0 = Math.max(0, Math.floor(Math.min(...ys)));
+  const bw = Math.min(W, Math.ceil(Math.max(...xs))) - x0, bh = Math.min(H, Math.ceil(Math.max(...ys))) - y0;
+  if (bw < 12 || bh < 12) return null;
+  const k = Math.min(1, PATCH / Math.max(bw, bh)), cw = Math.max(1, Math.round(bw * k)), ch = Math.max(1, Math.round(bh * k));
+  g.clearRect(0, 0, PATCH, PATCH);
+  g.save(); g.beginPath();
+  shape.forEach((p, i) => g[i ? 'lineTo' : 'moveTo']((p.x * W - x0) * k, (p.y * H - y0) * k));
+  g.closePath(); g.clip(); g.drawImage(v, x0, y0, bw, bh, 0, 0, cw, ch); g.restore();
+  const d = g.getImageData(0, 0, cw, ch).data;
+  let r = 0, gr = 0, b = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] === 255) { r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++; }
+  return n < 40 ? null : { rgb: [r / n, gr / n, b / n], light: gr / n, pixels: Math.round(n / (k * k)) };
+}
 const VIDEO = { display: 'block', width: '100%', maxWidth: 480, borderRadius: 'var(--radius-container)', background: 'var(--color-background-muted)' };
 // Safari pauses a video that is not rendered, so the source video stays in the page at one pixel.
 const HIDDEN = { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' };
@@ -56,6 +76,7 @@ const AIM = {
 };
 const DARK = 'Too dark. Turn towards a window or a lamp.';
 const LOCK_MS = 1200, GIVE_UP_MS = 8000, LOST_MS = 1000, MAX_RESTARTS = 3;
+const NO_PALM_MS = 45000, PALM_RESTARTS = 5, BLINK_MS = 300;
 
 function Camera({ aim, onDone, onFail, onStop }) {
   const video = useRef(null), view = useRef(null);
@@ -69,13 +90,30 @@ function Camera({ aim, onDone, onFail, onStop }) {
     (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('no camera support');
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({ video: CAMERA, audio: false });
       } catch { if (!stopped) onFail('The camera is not available or permission was refused. Tap along instead.'); return; }
       if (stopped) return stream.getTracks().forEach((t) => t.stop());
       const v = video.current, a = AIM[aim];
       v.srcObject = stream;
       await v.play().catch(() => {});
-      setStatus(a.find);
+      // Palm mode tracks the hand with a landmark model. If the model cannot load, it falls back to skin colour.
+      let finder = null;
+      if (aim === 'palm') {
+        setStatus('Loading the hand tracker. The first time takes a few seconds.');
+        finder = await loadHandFinder().catch(() => null);
+        if (stopped) return;
+      }
+      const tracked = !!finder;
+      setStatus(aim === 'palm' && !tracked ? `The hand tracker could not load, so skin colour is used instead. ${a.find}` : a.find);
+      const patch = document.createElement('canvas'); patch.width = PATCH; patch.height = PATCH;
+      const pg = patch.getContext('2d', { willReadFrequently: true });
+      let shape = null, seenAt = 0, heldSince = 0, tick = 0, small = false, pixels = 0;
+      const outline = () => {
+        const W = view.current.width, H = view.current.height;
+        out.lineWidth = 4; out.strokeStyle = accent; out.beginPath();
+        shape.forEach((p, i) => out[i ? 'lineTo' : 'moveTo']((1 - p.x) * W, p.y * H));
+        out.closePath(); out.stroke();
+      };
       const canvas = document.createElement('canvas');
       const g = canvas.getContext('2d', { willReadFrequently: true });
       const out = view.current.getContext('2d');
@@ -103,11 +141,31 @@ function Camera({ aim, onDone, onFail, onStop }) {
           setFeed(`Camera picture: ${v.videoWidth} × ${v.videoHeight}${set.frameRate ? `, ${Math.round(set.frameRate)} frames per second` : ''}`);
           told = true;
         }
-        g.drawImage(v, 0, 0, w, h);
-        const px = g.getImageData(0, 0, w, h).data;
         out.save(); out.scale(-1, 1); out.drawImage(v, -view.current.width, 0, view.current.width, view.current.height); out.restore();
+        if (tracked) {
+          // Look for the hand on every second frame; the outline in between is the last one found.
+          if (tick++ % 2 === 0 || !shape) {
+            let found = null;
+            try { found = finder.detectForVideo(v, now).landmarks[0]; } catch { found = null; }
+            const next = found ? palmShape(found) : null;
+            small = !!next && shapeArea(next) < MIN_PALM_AREA;
+            if (next && !small) { shape = next; seenAt = now; } else if (now - seenAt > BLINK_MS) shape = null;
+          }
+          if (shape) outline();
+        }
+        const px = tracked ? null : (g.drawImage(v, 0, 0, w, h), g.getImageData(0, 0, w, h).data);
 
-        if (!roi) {
+        if (!roi && tracked) {
+          if (!shape) heldSince = 0; else if (!heldSince) heldSince = now;
+          if (heldSince && now - heldSince >= LOCK_MS) { lock({ tracked: true }, now); setStatus('Palm found and followed. Keep it open and still.'); }
+          else if (now - Math.max(began, seenAt) > NO_PALM_MS) {
+            release();
+            return onFail('No palm was found in the picture, so nothing was measured. Hold your open hand up to the camera with the fingers spread, in good light. Or tap along.');
+          } else {
+            const second = Math.floor((now - began) / 1000);
+            if (second !== lastSecond) { lastSecond = second; setStatus(small ? 'Move your palm closer to the camera.' : shape ? 'Palm found. Hold it still.' : restarts ? 'Your palm left the picture. Hold it up again to start over.' : a.find); }
+          }
+        } else if (!roi) {
           const found = skinRegion(px, w, h);
           const big = found && found.share >= a.share;
           if (big && anchor && Math.hypot(found.x - anchor.x, found.y - anchor.y) < 0.08) { if (now - since >= LOCK_MS) { guessed = false; lock(found, now); setStatus(a.hold); } }
@@ -122,12 +180,24 @@ function Camera({ aim, onDone, onFail, onStop }) {
           const second = Math.floor((now - began) / 1000);
           if (!roi && second !== lastSecond) { lastSecond = second; setStatus(regionRgb(px, w, [...Array((w / SKIN_CELL) * (h / SKIN_CELL)).keys()], w / SKIN_CELL).light < 40 ? DARK : restarts ? `Your ${a.name} left the box. Hold it still to start again.` : a.find); }
         } else {
-          const t = now - t0, f = regionRgb(px, w, roi.cells, roi.cols);
-          const away = f.share < 0.5, dark = f.light < 40;
-          frames.push(f.rgb); times.push(t); flags.push({ away, dark });
-          const [x0, y0, x1, y1] = roi.box, W = view.current.width, H = view.current.height;
-          out.lineWidth = 4; out.strokeStyle = accent; out.strokeRect((1 - x1) * W, y0 * H, (x1 - x0) * W, (y1 - y0) * H);
-          if (away && !guessed && restarts < MAX_RESTARTS) {
+          const t = now - t0;
+          let away = false;
+          if (tracked) {
+            // Only frames where the palm is in view are read. If it stays away, the measurement starts over.
+            const f = shape && readShape(pg, v, shape);
+            if (f) { frames.push(f.rgb); times.push(t); flags.push({ away: false, dark: f.light < 40 }); pixels = f.pixels; }
+            else if (now - seenAt > LOST_MS) {
+              if (++restarts > PALM_RESTARTS) { release(); return onFail('Your palm kept leaving the picture, so no number is shown. Rest your elbow on the desk and try again, or tap along.'); }
+              roi = null; heldSince = 0; lastSecond = -1; setLeft(null); raf = requestAnimationFrame(frame); return;
+            }
+          } else {
+            const f = regionRgb(px, w, roi.cells, roi.cols), dark = f.light < 40;
+            away = f.share < 0.5;
+            frames.push(f.rgb); times.push(t); flags.push({ away, dark });
+            const [x0, y0, x1, y1] = roi.box, W = view.current.width, H = view.current.height;
+            out.lineWidth = 4; out.strokeStyle = accent; out.strokeRect((1 - x1) * W, y0 * H, (x1 - x0) * W, (y1 - y0) * H);
+          }
+          if (tracked) { /* handled above */ } else if (away && !guessed && restarts < MAX_RESTARTS) {
             if (!lostSince) lostSince = now;
             else if (now - lostSince > LOST_MS) { roi = null; anchor = null; since = now; restarts++; lastSecond = -1; setLeft(null); raf = requestAnimationFrame(frame); return; }
           } else lostSince = 0;
@@ -141,7 +211,7 @@ function Camera({ aim, onDone, onFail, onStop }) {
             else if (last.away > 0.5) setStatus(`Fill the box with your ${a.name}.`);
             else if (limit > SECONDS) setStatus(`The signal is weak, so this is measuring ${EXTRA} seconds more. Keep still.`);
             else if (second >= 10) setStatus(pulseFromRgb(frames, times).ok ? 'Pulse signal found. Keep still.' : 'Looking for your pulse. Keep still.');
-            else if (second >= 2 && !guessed) setStatus(a.hold);
+            else if (second >= 2 && !guessed) setStatus(tracked ? `Palm followed: reading about ${pixels.toLocaleString('en-GB')} pixels of skin. Keep still.` : a.hold);
           }
           if (t >= limit * 1000) {
             const win = recent(t, SECONDS), r = pulseFromRgb(win.frames, win.times);
@@ -199,7 +269,7 @@ export default function Pulse({ onDone }) {
           <VStack gap={1}><Heading level={3}>Camera: face</Heading><Text as="p" color="secondary">About {SECONDS} seconds. Reads tiny colour changes in your skin. Needs good light. Nothing is saved or sent.</Text></VStack>
         </ClickableCard>
         <ClickableCard label="Camera: palm" onClick={() => setMode('palm')}>
-          <VStack gap={1}><Heading level={3}>Camera: palm</Heading><Text as="p" color="secondary">About {SECONDS} seconds. Finds your palm first, then reads only that area. Rest your elbow on the desk. Nothing is saved or sent.</Text></VStack>
+          <VStack gap={1}><Heading level={3}>Camera: palm</Heading><Text as="p" color="secondary">About {SECONDS} seconds. A hand tracker finds your palm, follows it and reads only that area. Rest your elbow on the desk. Nothing is saved or sent.</Text></VStack>
         </ClickableCard>
       </Grid>
     </VStack>

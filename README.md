@@ -19,7 +19,7 @@ npm run build    # static site in dist/, works from any folder
 npm test         # 31 unit tests for the scoring, mission, rules and replay logic
 ```
 
-The camera pulse test needs HTTPS or localhost.
+The camera pulse test needs HTTPS or localhost. Its palm mode loads Google's MediaPipe Hand Landmarker model (Apache 2.0 licence) from `public/mediapipe/`, about 22 MB, only when that mode is opened.
 
 - `#/replay` plays a simulated 180-day mission (stamped SIMULATED on every screen).
 - `#/replay/66` opens the replay paused on a given day.
