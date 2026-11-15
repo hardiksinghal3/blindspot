@@ -79,6 +79,29 @@ test('pulse refuses pure noise', () => {
   const x = Array.from({ length: 900 }, () => 100 + rnd());
   ok(S.pulseFromSignal(x, 30).quality < 0.3);
 });
+// A camera recording: skin colour with a pulse, brightness wander shared by all channels, uneven frame times.
+function cameraRecording(bpm, amp, seed) {
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5;
+  const frames = [], times = []; let t = 0, wander = 0;
+  while (t < 30000) {
+    wander = 0.97 * wander + 0.004 * rnd();
+    const p = amp * Math.sin(2 * Math.PI * (bpm / 60) * t / 1000);
+    frames.push([170 * (1 + wander) * (1 + 0.43 * p) + 0.2 * rnd(), 120 * (1 + wander) * (1 + p) + 0.2 * rnd(), 100 * (1 + wander) * (1 + 0.69 * p) + 0.2 * rnd()]);
+    times.push(t); t += 33.3 + 12 * rnd();
+  }
+  return [frames, times];
+}
+test('camera pulse: finds 64 and 88 bpm under brightness wander and uneven frames', () => {
+  for (const bpm of [64, 88]) {
+    const r = S.pulseFromRgb(...cameraRecording(bpm, 0.002, 5));
+    ok(r.ok, 'refused ' + JSON.stringify(r)); near(r.bpm, bpm, 2);
+  }
+});
+test('camera pulse: refuses a recording with no pulse in it', () => {
+  let accepted = 0;
+  for (let seed = 1; seed <= 40; seed++) if (S.pulseFromRgb(...cameraRecording(70, 0, seed * 97)).ok) accepted++;
+  ok(accepted <= 2, accepted + ' of 40 pulse-free recordings were accepted');
+});
 test('pulse from taps', () => {
   const t = Array.from({ length: 12 }, (_, i) => i * 1000);
   const r = S.pulseFromTaps(t); eq(r.bpm, 60); eq(r.quality, 1);

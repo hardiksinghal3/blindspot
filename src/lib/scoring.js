@@ -164,8 +164,56 @@ export function pulseFromSignal(samples, fs) {
     total += p;
     if (p > best.p) best = { f: bpm, p };
   }
-  const near = powers.filter(([b]) => Math.abs(b - best.f) <= 4).reduce((s, [, p]) => s + p, 0);
+  const near = powers.filter(([b]) => Math.abs(b - best.f) <= 5).reduce((s, [, p]) => s + p, 0);
   return { bpm: best.f, quality: total > 0 ? near / total : 0 };
+}
+
+// Camera pulse from mean skin colour per frame.
+// frames: [r, g, b] means; times: ms. Frames arrive unevenly, so they are binned onto a steady clock.
+// The colour signal is combined with the POS method (Wang and others, 2017), which cancels
+// brightness changes that hit all three channels alike, such as small movements.
+export const CAMERA_FS = 30;
+export function pulseSignalFromRgb(frames, times, fs = CAMERA_FS) {
+  if (frames.length < 2) return [];
+  const n = Math.floor(((times[times.length - 1] - times[0]) / 1000) * fs);
+  const rgb = [[], [], []];
+  let j = 0, last = frames[0];
+  for (let i = 0; i < n; i++) {
+    const end = times[0] + ((i + 1) * 1000) / fs;
+    let c = 0; const sum = [0, 0, 0];
+    while (j < frames.length && times[j] < end) { for (let k = 0; k < 3; k++) sum[k] += frames[j][k]; c++; j++; }
+    if (c) last = sum.map((v) => v / c);
+    for (let k = 0; k < 3; k++) rgb[k].push(last[k]);
+  }
+  const len = Math.round(fs * 1.6), out = new Array(n).fill(0);
+  for (let start = 0; start + len <= n; start++) {
+    const mean = rgb.map((ch) => { let m = 0; for (let i = start; i < start + len; i++) m += ch[i]; return m / len || 1; });
+    const s1 = [], s2 = [];
+    for (let i = start; i < start + len; i++) {
+      const r = rgb[0][i] / mean[0], g = rgb[1][i] / mean[1], b = rgb[2][i] / mean[2];
+      s1.push(g - b); s2.push(g + b - 2 * r);
+    }
+    const sd = (a) => { const m = a.reduce((x, y) => x + y, 0) / a.length; return Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / a.length); };
+    const alpha = sd(s2) > 0 ? sd(s1) / sd(s2) : 0;
+    const h = s1.map((v, i) => v + alpha * s2[i]);
+    const hm = h.reduce((x, y) => x + y, 0) / len;
+    for (let i = 0; i < len; i++) out[start + i] += h[i] - hm;
+  }
+  return out;
+}
+
+// Accept a camera reading only when the spectrum has one clear peak, or a fair peak that
+// both halves of the recording agree on. Anything else is refused rather than guessed.
+export const CAMERA_CLEAR = 0.3, CAMERA_FAIR = 0.2, CAMERA_AGREE_BPM = 5;
+export function pulseFromRgb(frames, times, fs = CAMERA_FS) {
+  const x = pulseSignalFromRgb(frames, times, fs);
+  const whole = pulseFromSignal(x, fs);
+  if (!Number.isFinite(whole.bpm)) return { bpm: NaN, quality: 0, ok: false };
+  const half = Math.floor(x.length / 2);
+  const a = pulseFromSignal(x.slice(0, half), fs), b = pulseFromSignal(x.slice(half), fs);
+  const agree = Math.abs(a.bpm - whole.bpm) <= CAMERA_AGREE_BPM && Math.abs(b.bpm - whole.bpm) <= CAMERA_AGREE_BPM;
+  const ok = whole.quality >= CAMERA_CLEAR || (agree && whole.quality >= CAMERA_FAIR);
+  return { bpm: whole.bpm, quality: whole.quality, agree, ok };
 }
 
 // Pulse from tap timestamps (ms): median interval, quality from interval regularity.

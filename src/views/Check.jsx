@@ -94,7 +94,7 @@ function resultOf(type, r) {
   }
   return {
     values: { pulse: r.bpm }, detail: { method: r.method, quality: +r.quality.toFixed(2) },
-    lines: [['Resting pulse', `${r.bpm} beats per minute`], ['Method', r.method === 'tap' ? 'Tapped along' : 'Camera'], [r.method === 'tap' ? 'Tap regularity' : 'Signal quality', `${Math.round(r.quality * 100)} %`]],
+    lines: [['Resting pulse', `${r.bpm} beats per minute`], ['Method', { tap: 'Tapped along', face: 'Camera, face', palm: 'Camera, palm' }[r.method]], [r.method === 'tap' ? 'Tap regularity' : 'Signal quality', `${Math.round(r.quality * 100)} %`]],
   };
 }
 
