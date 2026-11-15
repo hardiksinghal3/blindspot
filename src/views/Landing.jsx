@@ -67,29 +67,30 @@ function Signal() {
 export default function Landing() {
   const { startReplay } = useApp();
   return (
-    <Layout
+    <VStack gap={0}>
+      <MediaTheme mode="dark">
+        <Card variant="night" padding={8} width="100%">
+          <Reveal gap={6} hAlign="center" rise={12}>
+            <VStack gap={3} hAlign="center" maxWidth={READ_WIDTH}>
+              <Heading level={1} type="display-2" justify="center" textWrap="balance">The health monitor that does not trust how you feel</Heading>
+              <Text as="p" type="large" color="secondary" justify="center" textWrap="balance">
+                On the way to Mars, astronauts have to spot changes in themselves. But a tired brain rates itself as fine. BlindSpot asks how you feel, measures how you are, and acts on the gap.
+              </Text>
+            </VStack>
+            <HStack gap={3} wrap="wrap" hAlign="center">
+              <Button label="Run today's check" variant="primary" size="lg" href={getState().settings.onboarded ? '#/check' : '#/setup'} />
+              <Button label="Play a 180-day mission" size="lg" onClick={() => startReplay(1, true)} />
+            </HStack>
+            <Signal />
+          </Reveal>
+        </Card>
+      </MediaTheme>
+      <Layout
       height="auto" contentWidth={PAGE_WIDTH}
       content={
         <LayoutContent padding={6}>
-          <VStack gap={10}>
-            <VStack gap={6} hAlign="center">
-              <MediaTheme mode="dark">
-                <Card variant="night" padding={8} width="100%">
-                  <Reveal gap={6} hAlign="center" rise={12}>
-                    <VStack gap={3} hAlign="center" maxWidth={READ_WIDTH}>
-                      <Heading level={1} type="display-2" justify="center" textWrap="balance">The health monitor that does not trust how you feel</Heading>
-                      <Text as="p" type="large" color="secondary" justify="center" textWrap="balance">
-                        On the way to Mars, astronauts have to spot changes in themselves. But a tired brain rates itself as fine. BlindSpot asks how you feel, measures how you are, and acts on the gap.
-                      </Text>
-                    </VStack>
-                    <HStack gap={3} wrap="wrap" hAlign="center">
-                      <Button label="Run today's check" variant="primary" size="lg" href={getState().settings.onboarded ? '#/check' : '#/setup'} />
-                      <Button label="Play a 180-day mission" size="lg" onClick={() => startReplay(1, true)} />
-                    </HStack>
-                    <Signal />
-                  </Reveal>
-                </Card>
-              </MediaTheme>
+          <VStack gap={8}>
+            <VStack gap={4} hAlign="center">
               <Text as="p" type="supporting" justify="center">The check takes about a minute and uses only this device. The replay flies a simulated crew member through real NASA light-time and solar storm data.</Text>
               <Reveal hAlign="center" width="100%" delay={150}><Example /></Reveal>
             </VStack>
@@ -129,6 +130,7 @@ export default function Landing() {
           </VStack>
         </LayoutContent>
       }
-    />
+      />
+    </VStack>
   );
 }

@@ -558,6 +558,8 @@
   .astryx-card[data-variant="night"] {
     background-color: #0B1733;
     border-color: #0B1733;
+    border-radius: 0;
+    --_card-radius: 0;
   }
 
   .astryx-section {
@@ -587,6 +589,11 @@
 
   .astryx-side-nav {
     background-color: #0B1733;
+  }
+
+  .astryx-top-nav {
+    background-color: #0B1733;
+    border-color: #0B1733;
   }
 
   .astryx-text[data-color="primary"] { color: var(--color-text-primary); }

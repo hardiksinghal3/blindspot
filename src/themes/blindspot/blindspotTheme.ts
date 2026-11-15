@@ -2,7 +2,7 @@
 import {defineTheme} from '@astryxdesign/core/theme';
 import {neutralTheme} from '@astryxdesign/theme-neutral';
 
-// The night side: the navigation rail and the landing page's opening panel.
+// The night side: the navigation rail, and the landing page's header and opening band.
 const night = '#0B1733';
 
 const lift = 'transform var(--duration-fast) var(--ease-move), box-shadow var(--duration-fast) var(--ease-standard)';
@@ -21,7 +21,8 @@ export const blindspotTheme = defineTheme({
       },
     },
     'side-nav': {base: {backgroundColor: night}},
-    card: {'variant:night': {backgroundColor: night, borderColor: night}},
+    'top-nav': {base: {backgroundColor: night, borderColor: night}},
+    card: {'variant:night': {backgroundColor: night, borderColor: night, borderRadius: 0}},
     button: {
       base: {
         transition: lift,

@@ -102,7 +102,7 @@ function Shell() {
     return (
       <AppShell
         height="auto" variant="surface"
-        topNav={<TopNav label="BlindSpot" heading={<TopNavHeading logo={brand} heading="BlindSpot" />} endContent={<Button label="Open the app" href="#/today" size="sm" />} />}>
+        topNav={<MediaTheme mode="dark"><TopNav label="BlindSpot" heading={<TopNavHeading logo={brand} heading="BlindSpot" />} endContent={<Button label="Open the app" href="#/today" size="sm" />} /></MediaTheme>}>
         <Landing />
       </AppShell>
     );

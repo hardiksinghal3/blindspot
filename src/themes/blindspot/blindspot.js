@@ -442,7 +442,8 @@ export const blindspotTheme = {
       },
       "variant:night": {
         "backgroundColor": "#0B1733",
-        "borderColor": "#0B1733"
+        "borderColor": "#0B1733",
+        "borderRadius": 0
       }
     },
     "section": {
@@ -465,6 +466,12 @@ export const blindspotTheme = {
     "side-nav": {
       "base": {
         "backgroundColor": "#0B1733"
+      }
+    },
+    "top-nav": {
+      "base": {
+        "backgroundColor": "#0B1733",
+        "borderColor": "#0B1733"
       }
     }
   },
