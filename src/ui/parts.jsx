@@ -32,7 +32,7 @@ export function SourceLinks({ ids }) {
         const s = SOURCES[id];
         return (
           <VStack key={id} gap={0}>
-            {s.url ? <Link href={s.url} target="_blank" type="supporting" hasUnderline>{s.title}</Link> : <Text type="supporting">{s.title}</Text>}
+            {s.url ? <Link href={s.url} target="_blank" type="supporting" color="primary">{s.title}</Link> : <Text type="supporting">{s.title}</Text>}
             <Text type="supporting" color="secondary">{s.org}</Text>
           </VStack>
         );
