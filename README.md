@@ -6,6 +6,8 @@ The astronaut predicts each result, the device measures it, and the gap between 
 
 **Not a medical device. Not validated in flight. Not endorsed by NASA.**
 
+Live site: https://hardiksinghal3.github.io/blindspot/
+
 ## Run it
 
 A React site built with Vite. The interface uses [Astryx](https://github.com/meta/astryx), Meta's open-source design system (MIT licence). Needs Node 20 or later.
